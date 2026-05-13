@@ -7,8 +7,6 @@ const TIMEFRAMES = ["1M", "3M", "5M", "15M", "30M", "1H", "4H", "D", "W"];
 const DEFAULT_MODELS = ["ICT 2022 Model", "OB tiếp diễn (OB đầu tiên sau MSS)"];
 const CONFLUENCES = ["FVG", "IFVG", "BPR", "OB", "Breaker", "SMT", "Rejection Block", "Propulsion Block", "Void/CE", "SIBI", "BISI", "EQH/EQL", "Wick Fill"];
 const PSYCHOLOGY_OPTIONS = ["Tự tin, kiên nhẫn", "FOMO", "Revenge trade", "Hồi hộp, lo lắng", "Overconfident", "Do dự, vào trễ", "Bình tĩnh, theo plan", "Thoát sớm vì sợ", "Để lệnh chạy tốt"];
-const STORAGE_KEY = "mtj_trades";
-const MODELS_KEY = "mtj_models";
 
 const emptyForm = () => ({
   id: Date.now(),
@@ -18,48 +16,57 @@ const emptyForm = () => ({
   psychologyTags: [], psychology: "", lesson: "", images: [], result: "", pnl: "",
 });
 
-function loadTrades() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
-function saveTrades(t) { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); }
-function loadModels() { try { return JSON.parse(localStorage.getItem(MODELS_KEY)) || DEFAULT_MODELS; } catch { return DEFAULT_MODELS; } }
-function saveModels(m) { localStorage.setItem(MODELS_KEY, JSON.stringify(m)); }
+const STORAGE_KEY = "ict_journal_trades";
+const MODELS_KEY = "ict_journal_models";
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-const btnStyle = { fontSize: 13, padding: "5px 14px", cursor: "pointer", borderRadius: 7, border: "0.5px solid #ccc", background: "#fff" };
-const primaryBtn = { ...btnStyle, background: "#1a1a1a", color: "#fff", border: "1px solid #1a1a1a", fontSize: 14, padding: "8px 22px", fontWeight: 500 };
-const inp = { fontSize: 14, width: "100%", boxSizing: "border-box", padding: "7px 10px", border: "0.5px solid #ccc", borderRadius: 7, outline: "none", fontFamily: "inherit" };
-const chipStyle = (active, c) => ({ fontSize: 12, padding: "4px 12px", cursor: "pointer", borderRadius: 20, background: active ? c.bg : "transparent", color: active ? c.text : "#777", border: `1px solid ${active ? c.border : "#ddd"}`, fontWeight: active ? 500 : 400, fontFamily: "inherit" });
-const lbl = { fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 };
-const sec = { fontSize: 12, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 4, marginTop: 4, letterSpacing: 0.5 };
-const secTitle = { fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.3 };
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-// ─── Export ──────────────────────────────────────────────────────────────────
+function loadTrades() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+}
+function saveTrades(trades) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+}
+function loadModels() {
+  try { return JSON.parse(localStorage.getItem(MODELS_KEY)) || DEFAULT_MODELS; } catch { return DEFAULT_MODELS; }
+}
+function saveModels(models) {
+  localStorage.setItem(MODELS_KEY, JSON.stringify(models));
+}
+
+// ─── Export ─────────────────────────────────────────────────────────────────
+
 async function exportCard(tradeId, format = "png") {
   const el = document.getElementById(`export-card-${tradeId}`);
   if (!el) return;
   el.style.display = "block";
-  await new Promise(r => setTimeout(r, 150));
+  await new Promise(r => setTimeout(r, 100));
   const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
   el.style.display = "none";
   if (format === "pdf") {
     const imgData = canvas.toDataURL("image/png");
-    const mmW = (canvas.width / 2) * 0.2646;
-    const mmH = (canvas.height / 2) * 0.2646;
-    const pdf = new jsPDF({ orientation: mmW > mmH ? "landscape" : "portrait", unit: "mm", format: [mmW, mmH] });
-    pdf.addImage(imgData, "PNG", 0, 0, mmW, mmH);
+    const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [canvas.width / 2, canvas.height / 2] });
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
     pdf.save(`trade-${tradeId}.pdf`);
   } else {
-    const a = document.createElement("a");
-    a.download = `trade-${tradeId}.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
+    const link = document.createElement("a");
+    link.download = `trade-${tradeId}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
   }
 }
 
-// ─── Export Card (hidden) ─────────────────────────────────────────────────────
+// ─── Export Card (hidden, used for rendering) ────────────────────────────────
+
 function ExportCard({ trade }) {
   const pos = trade.position;
-  const posStyle = pos === "Buy" ? { background: "#EAF3DE", color: "#3B6D11", border: "1px solid #97C459" } : { background: "#FCEBEB", color: "#A32D2D", border: "1px solid #F09595" };
-  const resStyle = trade.result === "Win" ? { color: "#3B6D11" } : trade.result === "Loss" ? { color: "#A32D2D" } : { color: "#854F0B" };
+  const posStyle = pos === "Buy"
+    ? { background: "#EAF3DE", color: "#3B6D11", border: "1px solid #97C459" }
+    : { background: "#FCEBEB", color: "#A32D2D", border: "1px solid #F09595" };
+  const resStyle = trade.result === "Win"
+    ? { color: "#3B6D11" } : trade.result === "Loss"
+    ? { color: "#A32D2D" } : { color: "#854F0B" };
+
   const Row = ({ label, value }) => {
     if (!value || (Array.isArray(value) && !value.length)) return null;
     const text = Array.isArray(value) ? value.join("  ·  ") : value;
@@ -70,8 +77,10 @@ function ExportCard({ trade }) {
       </div>
     );
   };
+
   return (
     <div id={`export-card-${trade.id}`} style={{ display: "none", width: 800, padding: 40, background: "#fff", fontFamily: "system-ui, sans-serif", boxSizing: "border-box" }}>
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 16, borderBottom: "1.5px solid #e8e8e4" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 26, fontWeight: 600, color: "#111" }}>{trade.ticker || "—"}</span>
@@ -82,33 +91,48 @@ function ExportCard({ trade }) {
           {trade.result && <div style={{ ...resStyle, fontSize: 14, fontWeight: 600, marginTop: 2 }}>{trade.result}{trade.pnl ? `  ${trade.pnl}` : ""}</div>}
         </div>
       </div>
+
+      {/* Fields */}
       <Row label="Structure & Bias (HTF)" value={trade.structure} />
       <Row label="Price Action (LTF)" value={trade.priceAction} />
-      <Row label="DOL" value={trade.dol} />
+      <Row label="DOL (Draw on Liquidity)" value={trade.dol} />
       <Row label="Entry Model" value={trade.selectedModels} />
-      <Row label="Entry TF · Session" value={[trade.entryTF, trade.session].filter(Boolean).join("  ·  ")} />
+      <Row label={`Entry TF · Session`} value={[trade.entryTF, trade.session].filter(Boolean).join("  ·  ")} />
       <Row label="Confluences" value={trade.confluences} />
       <Row label="Tâm lý" value={[...(trade.psychologyTags || []), trade.psychology].filter(Boolean)} />
       <Row label="Bài học" value={trade.lesson} />
+
+      {/* Images */}
       {trade.images?.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 11, color: "#999", fontWeight: 600, textTransform: "uppercase", marginBottom: 10 }}>Chart</div>
-          {trade.images.map((img, i) => <img key={i} src={img.url} alt={img.name} crossOrigin="anonymous" style={{ width: "100%", marginBottom: 12, borderRadius: 6, display: "block", border: "0.5px solid #e8e8e4" }} />)}
+          {trade.images.map((img, i) => (
+            <img key={i} src={img.url} alt={img.name} crossOrigin="anonymous"
+              style={{ width: "100%", marginBottom: 12, borderRadius: 6, display: "block", border: "0.5px solid #e8e8e4" }} />
+          ))}
         </div>
       )}
-      <div style={{ marginTop: 20, fontSize: 11, color: "#bbb", textAlign: "right" }}>My Trading Journal</div>
+
+      <div style={{ marginTop: 20, fontSize: 11, color: "#bbb", textAlign: "right" }}>ICT Trading Journal</div>
     </div>
   );
 }
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
+// ─── UI Components ───────────────────────────────────────────────────────────
+
 function Badge({ label, color = "gray" }) {
-  const colors = { buy: { bg: "#EAF3DE", text: "#3B6D11", border: "#97C459" }, sell: { bg: "#FCEBEB", text: "#A32D2D", border: "#F09595" }, gray: { bg: "#f1f1ee", text: "#5F5E5A", border: "#B4B2A9" }, win: { bg: "#EAF3DE", text: "#3B6D11", border: "#97C459" }, loss: { bg: "#FCEBEB", text: "#A32D2D", border: "#F09595" }, be: { bg: "#FAEEDA", text: "#854F0B", border: "#EF9F27" } };
+  const colors = {
+    buy: { bg: "#EAF3DE", text: "#3B6D11", border: "#97C459" },
+    sell: { bg: "#FCEBEB", text: "#A32D2D", border: "#F09595" },
+    gray: { bg: "#f1f1ee", text: "#5F5E5A", border: "#B4B2A9" },
+    win: { bg: "#EAF3DE", text: "#3B6D11", border: "#97C459" },
+    loss: { bg: "#FCEBEB", text: "#A32D2D", border: "#F09595" },
+    be: { bg: "#FAEEDA", text: "#854F0B", border: "#EF9F27" },
+  };
   const c = colors[color] || colors.gray;
   return <span style={{ background: c.bg, color: c.text, border: `0.5px solid ${c.border}`, borderRadius: 6, padding: "2px 10px", fontSize: 12, fontWeight: 500 }}>{label}</span>;
 }
 
-// ─── Image Upload ─────────────────────────────────────────────────────────────
 function ImageUpload({ images, onChange }) {
   const ref = useRef();
   const handleFiles = (e) => {
@@ -125,7 +149,8 @@ function ImageUpload({ images, onChange }) {
         {images.map((img, i) => (
           <div key={i} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "0.5px solid #ddd", background: "#000" }}>
             <img src={img.url} alt={img.name} style={{ width: "100%", aspectRatio: "16/9", objectFit: "contain", display: "block" }} />
-            <button onClick={() => onChange(prev => prev.filter((_, j) => j !== i))} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.55)", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 12 }}>✕</button>
+            <button onClick={() => onChange(prev => prev.filter((_, j) => j !== i))}
+              style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.55)", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 12, lineHeight: 1 }}>✕</button>
             <div style={{ padding: "4px 8px", fontSize: 11, color: "#888", background: "#f8f8f8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{img.name}</div>
           </div>
         ))}
@@ -136,25 +161,48 @@ function ImageUpload({ images, onChange }) {
   );
 }
 
-// ─── Trade Form ───────────────────────────────────────────────────────────────
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const btnStyle = { fontSize: 13, padding: "5px 14px", cursor: "pointer", borderRadius: 7, border: "0.5px solid #ccc", background: "#fff" };
+const primaryBtn = { ...btnStyle, background: "#1a1a1a", color: "#fff", border: "1px solid #1a1a1a", fontSize: 14, padding: "8px 22px", fontWeight: 500 };
+const inp = { fontSize: 14, width: "100%", boxSizing: "border-box", padding: "7px 10px", border: "0.5px solid #ccc", borderRadius: 7, outline: "none" };
+
+const chipStyle = (active, colors) => ({
+  fontSize: 12, padding: "4px 12px", cursor: "pointer", borderRadius: 20,
+  background: active ? colors.bg : "transparent",
+  color: active ? colors.text : "#777",
+  border: `1px solid ${active ? colors.border : "#ddd"}`,
+  fontWeight: active ? 500 : 400,
+});
+
+// ─── Form ────────────────────────────────────────────────────────────────────
+
 function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
   const [form, setForm] = useState(initial || emptyForm());
   const [newModel, setNewModel] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const toggleArr = (k, v) => { const a = form[k] || []; set(k, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); };
-  const handleImages = useCallback(u => setForm(f => ({ ...f, images: typeof u === "function" ? u(f.images) : u })), []);
+  const handleImages = useCallback(updater => setForm(f => ({ ...f, images: typeof updater === "function" ? updater(f.images) : updater })), []);
   const addModel = () => { if (!newModel.trim()) return; onAddModel(newModel.trim()); set("selectedModels", [...form.selectedModels, newModel.trim()]); setNewModel(""); };
+
+  const lbl = txt => <div style={{ fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 }}>{txt}</div>;
+  const sec = title => <div style={{ fontSize: 13, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 12, marginTop: 10, letterSpacing: 0.3 }}>{title.toUpperCase()}</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Row 1 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-        <div><div style={lbl}>Ngày</div><input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} /></div>
-        <div><div style={lbl}>Ticker</div><input type="text" placeholder="NQ, ES, EURUSD..." value={form.ticker} onChange={e => set("ticker", e.target.value.toUpperCase())} style={inp} /></div>
+        <div>{lbl("Ngày")}<input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} /></div>
+        <div>{lbl("Ticker")}<input type="text" placeholder="NQ, ES, EURUSD..." value={form.ticker} onChange={e => set("ticker", e.target.value.toUpperCase())} style={inp} /></div>
         <div>
-          <div style={lbl}>Position</div>
+          {lbl("Position")}
           <div style={{ display: "flex", gap: 8 }}>
             {["Buy", "Sell"].map(p => (
-              <button key={p} onClick={() => set("position", p)} style={{ flex: 1, padding: "7px 0", cursor: "pointer", fontWeight: 500, fontSize: 14, borderRadius: 8, fontFamily: "inherit", background: form.position === p ? (p === "Buy" ? "#EAF3DE" : "#FCEBEB") : "#fff", color: form.position === p ? (p === "Buy" ? "#3B6D11" : "#A32D2D") : "#777", border: `1.5px solid ${form.position === p ? (p === "Buy" ? "#97C459" : "#F09595") : "#ddd"}` }}>
+              <button key={p} onClick={() => set("position", p)}
+                style={{ flex: 1, padding: "7px 0", cursor: "pointer", fontWeight: 500, fontSize: 14, borderRadius: 8,
+                  background: form.position === p ? (p === "Buy" ? "#EAF3DE" : "#FCEBEB") : "#fff",
+                  color: form.position === p ? (p === "Buy" ? "#3B6D11" : "#A32D2D") : "#777",
+                  border: `1.5px solid ${form.position === p ? (p === "Buy" ? "#97C459" : "#F09595") : "#ddd"}` }}>
                 {p === "Buy" ? "▲ Buy" : "▼ Sell"}
               </button>
             ))}
@@ -162,15 +210,21 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
         </div>
       </div>
 
-      <div style={sec}>LÝ DO VÀO LỆNH</div>
-      <div><div style={lbl}>Structure & Bias (HTF)</div><textarea rows={2} placeholder="vd: Bias Bullish trên HTF, giá đang retrace về discount..." value={form.structure} onChange={e => set("structure", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
-      <div><div style={lbl}>Price action — đã quét thanh khoản? Chạm HTF PDA? (LTF)</div><textarea rows={2} placeholder="vd: Giá đã quét BSL tại 19250, rebalance về OB trên 4H..." value={form.priceAction} onChange={e => set("priceAction", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
-      <div><div style={lbl}>DOL (Draw on Liquidity) — giá đang có xu hướng tiến tới đâu?</div><input type="text" placeholder="vd: EQH 19480, BSL tại 19550, NWOG..." value={form.dol} onChange={e => set("dol", e.target.value)} style={inp} /></div>
+      {sec("Lý do vào lệnh")}
+
+      <div>{lbl("Structure & Bias (HTF)")}<textarea rows={2} placeholder="vd: Bias Bullish trên HTF, giá đang retrace về discount..." value={form.structure} onChange={e => set("structure", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
+      <div>{lbl("Price action — đã quét thanh khoản? Chạm HTF PDA? (LTF)")}<textarea rows={2} placeholder="vd: Giá đã quét BSL tại 19250, rebalance về OB trên 4H..." value={form.priceAction} onChange={e => set("priceAction", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
+      <div>{lbl("DOL (Draw on Liquidity) — giá đang có xu hướng tiến tới đâu?")}<input type="text" placeholder="vd: EQH 19480, BSL tại 19550, NWOG..." value={form.dol} onChange={e => set("dol", e.target.value)} style={inp} /></div>
 
       <div>
-        <div style={lbl}>Entry model</div>
+        {lbl("Entry model")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
-          {allModels.map(m => <button key={m} onClick={() => toggleArr("selectedModels", m)} style={chipStyle(form.selectedModels.includes(m), { bg: "#EEEDFE", text: "#3C3489", border: "#AFA9EC" })}>{form.selectedModels.includes(m) ? "✓ " : ""}{m}</button>)}
+          {allModels.map(m => (
+            <button key={m} onClick={() => toggleArr("selectedModels", m)}
+              style={chipStyle(form.selectedModels.includes(m), { bg: "#EEEDFE", text: "#3C3489", border: "#AFA9EC" })}>
+              {form.selectedModels.includes(m) ? "✓ " : ""}{m}
+            </button>
+          ))}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input type="text" placeholder="+ Thêm model mới..." value={newModel} onChange={e => setNewModel(e.target.value)} onKeyDown={e => e.key === "Enter" && addModel()} style={{ ...inp, flex: 1, fontSize: 13 }} />
@@ -180,13 +234,18 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <div style={lbl}>Entry timeframe</div>
+          {lbl("Entry timeframe")}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-            {TIMEFRAMES.map(tf => <button key={tf} onClick={() => set("entryTF", tf)} style={chipStyle(form.entryTF === tf, { bg: "#E6F1FB", text: "#185FA5", border: "#85B7EB" })}>{tf}</button>)}
+            {TIMEFRAMES.map(tf => (
+              <button key={tf} onClick={() => set("entryTF", tf)}
+                style={chipStyle(form.entryTF === tf, { bg: "#E6F1FB", text: "#185FA5", border: "#85B7EB" })}>
+                {tf}
+              </button>
+            ))}
           </div>
         </div>
         <div>
-          <div style={lbl}>Session</div>
+          {lbl("Session")}
           <select value={form.session} onChange={e => set("session", e.target.value)} style={{ ...inp, marginTop: 4 }}>
             <option value="">Chọn session...</option>
             {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -195,35 +254,56 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
       </div>
 
       <div>
-        <div style={lbl}>Yếu tố ủng hộ cho lệnh</div>
+        {lbl("Yếu tố ủng hộ cho lệnh")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-          {CONFLUENCES.map(c => <button key={c} onClick={() => toggleArr("confluences", c)} style={chipStyle((form.confluences || []).includes(c), { bg: "#E1F5EE", text: "#0F6E56", border: "#5DCAA5" })}>{(form.confluences || []).includes(c) ? "✓ " : ""}{c}</button>)}
+          {CONFLUENCES.map(c => (
+            <button key={c} onClick={() => toggleArr("confluences", c)}
+              style={chipStyle((form.confluences || []).includes(c), { bg: "#E1F5EE", text: "#0F6E56", border: "#5DCAA5" })}>
+              {(form.confluences || []).includes(c) ? "✓ " : ""}{c}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div style={sec}>SAU LỆNH</div>
+      {sec("Sau lệnh")}
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <div style={lbl}>Kết quả</div>
+          {lbl("Kết quả")}
           <div style={{ display: "flex", gap: 8 }}>
             {["Win", "Loss", "BE"].map(r => (
-              <button key={r} onClick={() => set("result", r)} style={{ flex: 1, padding: "6px 0", cursor: "pointer", fontSize: 13, fontWeight: 500, borderRadius: 8, fontFamily: "inherit", background: form.result === r ? (r === "Win" ? "#EAF3DE" : r === "Loss" ? "#FCEBEB" : "#FAEEDA") : "#fff", color: form.result === r ? (r === "Win" ? "#3B6D11" : r === "Loss" ? "#A32D2D" : "#854F0B") : "#777", border: `1.5px solid ${form.result === r ? (r === "Win" ? "#97C459" : r === "Loss" ? "#F09595" : "#EF9F27") : "#ddd"}` }}>{r}</button>
+              <button key={r} onClick={() => set("result", r)}
+                style={{ flex: 1, padding: "6px 0", cursor: "pointer", fontSize: 13, fontWeight: 500, borderRadius: 8,
+                  background: form.result === r ? (r === "Win" ? "#EAF3DE" : r === "Loss" ? "#FCEBEB" : "#FAEEDA") : "#fff",
+                  color: form.result === r ? (r === "Win" ? "#3B6D11" : r === "Loss" ? "#A32D2D" : "#854F0B") : "#777",
+                  border: `1.5px solid ${form.result === r ? (r === "Win" ? "#97C459" : r === "Loss" ? "#F09595" : "#EF9F27") : "#ddd"}` }}>
+                {r}
+              </button>
             ))}
           </div>
         </div>
-        <div><div style={lbl}>P&L (R hoặc $)</div><input type="text" placeholder="+2R hoặc +250$" value={form.pnl} onChange={e => set("pnl", e.target.value)} style={inp} /></div>
+        <div>{lbl("P&L (R hoặc $)")}<input type="text" placeholder="+2R hoặc +250$" value={form.pnl} onChange={e => set("pnl", e.target.value)} style={inp} /></div>
       </div>
 
       <div>
-        <div style={lbl}>Tâm lý</div>
+        {lbl("Tâm lý")}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 6 }}>
-          {PSYCHOLOGY_OPTIONS.map(p => <button key={p} onClick={() => toggleArr("psychologyTags", p)} style={chipStyle((form.psychologyTags || []).includes(p), { bg: "#EEEDFE", text: "#3C3489", border: "#AFA9EC" })}>{p}</button>)}
+          {PSYCHOLOGY_OPTIONS.map(p => (
+            <button key={p} onClick={() => toggleArr("psychologyTags", p)}
+              style={chipStyle((form.psychologyTags || []).includes(p), { bg: "#EEEDFE", text: "#3C3489", border: "#AFA9EC" })}>
+              {p}
+            </button>
+          ))}
         </div>
         <input type="text" placeholder="Ghi thêm nếu cần..." value={form.psychology} onChange={e => set("psychology", e.target.value)} style={{ ...inp, fontSize: 13 }} />
       </div>
 
-      <div><div style={lbl}>Bài học rút ra</div><textarea rows={2} placeholder="vd: Không trade revenge, chờ confirmation..." value={form.lesson} onChange={e => set("lesson", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
-      <div><div style={lbl}>Hình ảnh chart (không giới hạn)</div><ImageUpload images={form.images} onChange={handleImages} /></div>
+      <div>{lbl("Bài học rút ra")}<textarea rows={2} placeholder="vd: Không trade revenge, chờ confirmation..." value={form.lesson} onChange={e => set("lesson", e.target.value)} style={{ ...inp, resize: "vertical" }} /></div>
+
+      <div>
+        {lbl("Hình ảnh chart (không giới hạn)")}
+        <ImageUpload images={form.images} onChange={handleImages} />
+      </div>
 
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 6 }}>
         {onCancel && <button onClick={onCancel} style={btnStyle}>Huỷ</button>}
@@ -233,12 +313,19 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
   );
 }
 
-// ─── Trade Card ───────────────────────────────────────────────────────────────
+// ─── Trade Card ──────────────────────────────────────────────────────────────
+
 function TradeCard({ trade, onDelete, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const resColor = trade.result === "Win" ? "win" : trade.result === "Loss" ? "loss" : "be";
-  const handleExport = async (fmt) => { setExporting(true); await exportCard(trade.id, fmt); setExporting(false); };
+
+  const handleExport = async (fmt) => {
+    setExporting(true);
+    await exportCard(trade.id, fmt);
+    setExporting(false);
+  };
+
   return (
     <>
       <ExportCard trade={trade} />
@@ -264,12 +351,16 @@ function TradeCard({ trade, onDelete, onEdit }) {
             {trade.lesson && <div style={{ fontSize: 13 }}><span style={{ color: "#888", fontWeight: 500 }}>Bài học: </span>{trade.lesson}</div>}
             {trade.images?.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8, marginTop: 4 }}>
-                {trade.images.map((img, i) => <div key={i} style={{ borderRadius: 6, overflow: "hidden", border: "0.5px solid #ddd", background: "#000" }}><img src={img.url} alt={img.name} style={{ width: "100%", aspectRatio: "16/9", objectFit: "contain", display: "block" }} /></div>)}
+                {trade.images.map((img, i) => (
+                  <div key={i} style={{ borderRadius: 6, overflow: "hidden", border: "0.5px solid #ddd", background: "#000" }}>
+                    <img src={img.url} alt={img.name} style={{ width: "100%", aspectRatio: "16/9", objectFit: "contain", display: "block" }} />
+                  </div>
+                ))}
               </div>
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
-              <button onClick={() => handleExport("png")} disabled={exporting} style={btnStyle}>{exporting ? "..." : "PNG"}</button>
-              <button onClick={() => handleExport("pdf")} disabled={exporting} style={btnStyle}>{exporting ? "..." : "PDF"}</button>
+              <button onClick={() => handleExport("png")} disabled={exporting} style={btnStyle}>{exporting ? "..." : "Export PNG"}</button>
+              <button onClick={() => handleExport("pdf")} disabled={exporting} style={btnStyle}>{exporting ? "..." : "Export PDF"}</button>
               <button onClick={() => onEdit(trade)} style={btnStyle}>Sửa</button>
               <button onClick={() => onDelete(trade.id)} style={{ ...btnStyle, color: "#c0392b", borderColor: "#f09595" }}>Xoá</button>
             </div>
@@ -280,37 +371,22 @@ function TradeCard({ trade, onDelete, onEdit }) {
   );
 }
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
 function Stats({ trades }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [range, setRange] = useState("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState(today);
-  const [filter, setFilter] = useState("all");
-
-  const filtered = trades.filter(t => {
-    const d = t.date;
-    const now = new Date();
-    if (range === "week") { const start = new Date(now); start.setDate(now.getDate() - now.getDay()); if (d < start.toISOString().slice(0, 10)) return false; }
-    if (range === "month") { if (d.slice(0, 7) !== today.slice(0, 7)) return false; }
-    if (range === "custom") { if (from && d < from) return false; if (to && d > to) return false; }
-    if (filter !== "all" && t.result?.toLowerCase() !== filter) return false;
-    return true;
-  });
-
-  const wins = filtered.filter(t => t.result === "Win").length;
-  const losses = filtered.filter(t => t.result === "Loss").length;
-  const be = filtered.filter(t => t.result === "BE").length;
-  const total = filtered.filter(t => t.result).length;
+  const wins = trades.filter(t => t.result === "Win").length;
+  const losses = trades.filter(t => t.result === "Loss").length;
+  const be = trades.filter(t => t.result === "BE").length;
+  const total = trades.filter(t => t.result).length;
   const wr = total ? ((wins / total) * 100).toFixed(1) : "—";
-  const bySession = SESSIONS.map(s => ({ session: s, count: filtered.filter(t => t.session === s).length, wins: filtered.filter(t => t.session === s && t.result === "Win").length }));
-  const byModel = [...new Set(filtered.flatMap(t => t.selectedModels || []))].map(m => ({ model: m, count: filtered.filter(t => t.selectedModels?.includes(m)).length, wins: filtered.filter(t => t.selectedModels?.includes(m) && t.result === "Win").length }));
-  const byConfluence = [...new Set(filtered.flatMap(t => t.confluences || []))].map(c => ({ c, count: filtered.filter(t => t.confluences?.includes(c)).length, wins: filtered.filter(t => t.confluences?.includes(c) && t.result === "Win").length })).sort((a, b) => b.count - a.count);
+  const bySession = SESSIONS.map(s => ({ session: s, count: trades.filter(t => t.session === s).length, wins: trades.filter(t => t.session === s && t.result === "Win").length }));
+  const byModel = [...new Set(trades.flatMap(t => t.selectedModels || []))].map(m => ({ model: m, count: trades.filter(t => t.selectedModels?.includes(m)).length, wins: trades.filter(t => t.selectedModels?.includes(m) && t.result === "Win").length }));
+  const byConfluence = [...new Set(trades.flatMap(t => t.confluences || []))].map(c => ({ c, count: trades.filter(t => t.confluences?.includes(c)).length, wins: trades.filter(t => t.confluences?.includes(c) && t.result === "Win").length })).sort((a, b) => b.count - a.count);
 
   const StatCard = ({ label, val, color }) => (
     <div style={{ background: "#f7f7f5", borderRadius: 8, padding: "14px 16px", textAlign: "center" }}>
       <div style={{ fontSize: 11, color: "#aaa", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 600, color: color || "#111" }}>{val}</div>
+      <div style={{ fontSize: 24, fontWeight: 600, color: color || "#111" }}>{val}</div>
     </div>
   );
   const TableRow = ({ label, count, wins }) => (
@@ -321,50 +397,28 @@ function Stats({ trades }) {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[{ val: "all", label: "Tất cả" }, { val: "week", label: "Tuần này" }, { val: "month", label: "Tháng này" }, { val: "custom", label: "Tuỳ chỉnh" }].map(r => (
-            <button key={r.val} onClick={() => setRange(r.val)} style={chipStyle(range === r.val, { bg: "#f0f0ee", text: "#111", border: "#999" })}>{r.label}</button>
-          ))}
-        </div>
-        {range === "custom" && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ ...inp, width: 140, fontSize: 13 }} />
-            <span style={{ color: "#aaa", fontSize: 13 }}>→</span>
-            <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ ...inp, width: 140, fontSize: 13 }} />
-          </div>
-        )}
-        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-          {[{ val: "all", label: "Tất cả" }, { val: "win", label: "Win" }, { val: "loss", label: "Loss" }, { val: "be", label: "BE" }].map(f => (
-            <button key={f.val} onClick={() => setFilter(f.val)} style={chipStyle(filter === f.val, { bg: "#f0f0ee", text: "#111", border: "#999" })}>{f.label}</button>
-          ))}
-        </div>
-      </div>
-
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
-        <StatCard label="Tổng lệnh" val={filtered.length} />
+        <StatCard label="Tổng lệnh" val={trades.length} />
         <StatCard label="Win rate" val={`${wr}%`} color="#3B6D11" />
         <StatCard label="Win / Loss / BE" val={`${wins} / ${losses} / ${be}`} />
-        <StatCard label="Chưa có kết quả" val={filtered.length - total} />
+        <StatCard label="Chưa có kết quả" val={trades.length - total} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
-          <div style={secTitle}>Theo session</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#888", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.3 }}>Theo session</div>
           {bySession.filter(s => s.count > 0).length === 0 && <div style={{ fontSize: 13, color: "#bbb" }}>Chưa có dữ liệu</div>}
           {bySession.filter(s => s.count > 0).map(s => <TableRow key={s.session} label={s.session} count={s.count} wins={s.wins} />)}
         </div>
         <div>
-          <div style={secTitle}>Theo entry model</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#888", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.3 }}>Theo entry model</div>
           {byModel.length === 0 && <div style={{ fontSize: 13, color: "#bbb" }}>Chưa có dữ liệu</div>}
           {byModel.map(m => <TableRow key={m.model} label={m.model} count={m.count} wins={m.wins} />)}
         </div>
       </div>
-
       <div>
-        <div style={secTitle}>Confluence hiệu quả nhất</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#888", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.3 }}>Confluence hiệu quả nhất</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
           {byConfluence.length === 0 && <div style={{ fontSize: 13, color: "#bbb" }}>Chưa có dữ liệu</div>}
           {byConfluence.map(({ c, count, wins }) => (
             <div key={c} style={{ background: "#f7f7f5", borderRadius: 8, padding: "10px 14px" }}>
@@ -379,7 +433,8 @@ function Stats({ trades }) {
   );
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [tab, setTab] = useState("new");
   const [trades, setTrades] = useState(loadTrades);
@@ -398,12 +453,16 @@ export default function App() {
   const deleteTrade = (id) => { if (window.confirm("Xoá lệnh này?")) setTrades(ts => ts.filter(t => t.id !== id)); };
   const startEdit = (trade) => { setEditTrade(trade); setTab("new"); };
 
-  const tabStyle = (t) => ({ padding: "9px 18px", cursor: "pointer", fontSize: 14, fontWeight: tab === t ? 600 : 400, background: "transparent", border: "none", borderBottom: `2px solid ${tab === t ? "#1a1a1a" : "transparent"}`, color: tab === t ? "#111" : "#888", fontFamily: "inherit" });
+  const tabStyle = (t) => ({
+    padding: "9px 22px", cursor: "pointer", fontSize: 14, fontWeight: tab === t ? 600 : 400,
+    background: "transparent", border: "none", borderBottom: `2px solid ${tab === t ? "#111" : "transparent"}`,
+    color: tab === t ? "#111" : "#888",
+  });
 
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 4 }}>My Trading Journal</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 4 }}>ICT Trading Journal</h1>
         <p style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>Data lưu trên máy của bạn</p>
         <div style={{ display: "flex", borderBottom: "0.5px solid #e5e5e5", marginBottom: 24 }}>
           <button style={tabStyle("new")} onClick={() => { setEditTrade(null); setTab("new"); }}>+ Lệnh mới</button>
