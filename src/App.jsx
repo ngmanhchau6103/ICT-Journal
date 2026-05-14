@@ -14,10 +14,12 @@ const emptyForm = () => ({
   ticker: "", position: "", structure: "", priceAction: "", dol: "",
   selectedModels: [], confluences: [], entryTF: "", session: "",
   psychologyTags: [], psychology: "", lesson: "", images: [], result: "", pnl: "",
+  setupChecks: {}, // { setupId: [true, false, true, ...] }
 });
 
 const STORAGE_KEY = "my_journal_trades";
 const MODELS_KEY = "my_journal_models";
+const SETUPS_KEY = "my_journal_setups";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,12 @@ function loadModels() {
 function saveModels(models) {
   localStorage.setItem(MODELS_KEY, JSON.stringify(models));
 }
+function loadSetups() {
+  try { return JSON.parse(localStorage.getItem(SETUPS_KEY)) || []; } catch { return []; }
+}
+function saveSetups(setups) {
+  localStorage.setItem(SETUPS_KEY, JSON.stringify(setups));
+}
 
 // ─── Export ─────────────────────────────────────────────────────────────────
 
@@ -47,7 +55,6 @@ async function exportCard(tradeId, format = "png") {
     const imgData = canvas.toDataURL("image/png");
     const pxW = canvas.width / 2;
     const pxH = canvas.height / 2;
-    // Convert px to mm (96dpi: 1px = 0.2646mm)
     const mmW = pxW * 0.2646;
     const mmH = pxH * 0.2646;
     const pdf = new jsPDF({ orientation: mmW > mmH ? "landscape" : "portrait", unit: "mm", format: [mmW, mmH] });
@@ -61,7 +68,7 @@ async function exportCard(tradeId, format = "png") {
   }
 }
 
-// ─── Export Card (hidden, used for rendering) ────────────────────────────────
+// ─── Export Card ─────────────────────────────────────────────────────────────
 
 function ExportCard({ trade }) {
   const pos = trade.position;
@@ -85,7 +92,6 @@ function ExportCard({ trade }) {
 
   return (
     <div id={`export-card-${trade.id}`} style={{ display: "none", width: 800, padding: 40, background: "#fff", fontFamily: "system-ui, sans-serif", boxSizing: "border-box" }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 16, borderBottom: "1.5px solid #e8e8e4" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 26, fontWeight: 600, color: "#111" }}>{trade.ticker || "—"}</span>
@@ -96,8 +102,6 @@ function ExportCard({ trade }) {
           {trade.result && <div style={{ ...resStyle, fontSize: 14, fontWeight: 600, marginTop: 2 }}>{trade.result}{trade.pnl ? `  ${trade.pnl}` : ""}</div>}
         </div>
       </div>
-
-      {/* Fields */}
       <Row label="Structure & Bias (HTF)" value={trade.structure} />
       <Row label="Price Action (LTF)" value={trade.priceAction} />
       <Row label="DOL (Draw on Liquidity)" value={trade.dol} />
@@ -106,8 +110,6 @@ function ExportCard({ trade }) {
       <Row label="Confluences" value={trade.confluences} />
       <Row label="Tâm lý" value={[...(trade.psychologyTags || []), trade.psychology].filter(Boolean)} />
       <Row label="Bài học" value={trade.lesson} />
-
-      {/* Images */}
       {trade.images?.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 11, color: "#999", fontWeight: 600, textTransform: "uppercase", marginBottom: 10 }}>Chart</div>
@@ -117,7 +119,6 @@ function ExportCard({ trade }) {
           ))}
         </div>
       )}
-
       <div style={{ marginTop: 20, fontSize: 11, color: "#bbb", textAlign: "right" }}>My Trading Journal</div>
     </div>
   );
@@ -171,7 +172,6 @@ function ImageUpload({ images, onChange }) {
 const btnStyle = { fontSize: 13, padding: "5px 14px", cursor: "pointer", borderRadius: 7, border: "0.5px solid #ccc", background: "#fff" };
 const primaryBtn = { ...btnStyle, background: "#1a1a1a", color: "#fff", border: "1px solid #1a1a1a", fontSize: 14, padding: "8px 22px", fontWeight: 500 };
 const inp = { fontSize: 14, width: "100%", boxSizing: "border-box", padding: "7px 10px", border: "0.5px solid #ccc", borderRadius: 7, outline: "none" };
-
 const chipStyle = (active, colors) => ({
   fontSize: 12, padding: "4px 12px", cursor: "pointer", borderRadius: 20,
   background: active ? colors.bg : "transparent",
@@ -180,9 +180,89 @@ const chipStyle = (active, colors) => ({
   fontWeight: active ? 500 : 400,
 });
 
+// ─── Setup Checklist in Form ─────────────────────────────────────────────────
+
+function SetupChecklistSection({ setups, setupChecks, onChange }) {
+  if (!setups || setups.length === 0) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {setups.map(setup => {
+        const checks = setupChecks[setup.id] || setup.steps.map(() => false);
+        const checkedCount = checks.filter(Boolean).length;
+        const total = setup.steps.length;
+        const allDone = checkedCount === total && total > 0;
+
+        return (
+          <div key={setup.id} style={{
+            border: `1px solid ${allDone ? "#97C459" : "#e5e5e5"}`,
+            borderRadius: 10,
+            overflow: "hidden",
+            background: allDone ? "#f9fdf5" : "#fafafa",
+            transition: "all 0.2s"
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "10px 14px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: allDone ? "#EAF3DE" : "#f1f1ee",
+              borderBottom: `0.5px solid ${allDone ? "#97C459" : "#e5e5e5"}`
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: allDone ? "#3B6D11" : "#333" }}>
+                  {setup.name}
+                </span>
+                <span style={{ fontSize: 11, color: allDone ? "#3B6D11" : "#999" }}>
+                  Pre-trade checklist
+                </span>
+              </div>
+              <span style={{
+                fontSize: 12, fontWeight: 600,
+                color: allDone ? "#3B6D11" : checkedCount > 0 ? "#854F0B" : "#bbb"
+              }}>
+                {checkedCount}/{total} {allDone ? "✓" : ""}
+              </span>
+            </div>
+
+            {/* Steps */}
+            <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+              {setup.steps.map((step, idx) => (
+                <label key={idx} style={{
+                  display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+                  padding: "5px 6px", borderRadius: 6,
+                  background: checks[idx] ? "#f0fae8" : "transparent",
+                  transition: "background 0.15s"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checks[idx] || false}
+                    onChange={() => {
+                      const newChecks = [...checks];
+                      newChecks[idx] = !newChecks[idx];
+                      onChange(setup.id, newChecks);
+                    }}
+                    style={{ marginTop: 2, accentColor: "#3B6D11", width: 15, height: 15, flexShrink: 0 }}
+                  />
+                  <span style={{
+                    fontSize: 13, color: checks[idx] ? "#3B6D11" : "#444", lineHeight: 1.5,
+                    textDecoration: checks[idx] ? "none" : "none"
+                  }}>
+                    <span style={{ color: "#bbb", marginRight: 5, fontWeight: 500 }}>{idx + 1}.</span>
+                    {step}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Form ────────────────────────────────────────────────────────────────────
 
-function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
+function TradeForm({ initial, onSave, onCancel, allModels, onAddModel, setups }) {
   const [form, setForm] = useState(initial || emptyForm());
   const [newModel, setNewModel] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -190,11 +270,30 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
   const handleImages = useCallback(updater => setForm(f => ({ ...f, images: typeof updater === "function" ? updater(f.images) : updater })), []);
   const addModel = () => { if (!newModel.trim()) return; onAddModel(newModel.trim()); set("selectedModels", [...form.selectedModels, newModel.trim()]); setNewModel(""); };
 
+  const handleSetupCheck = (setupId, newChecks) => {
+    setForm(f => ({ ...f, setupChecks: { ...f.setupChecks, [setupId]: newChecks } }));
+  };
+
   const lbl = txt => <div style={{ fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 }}>{txt}</div>;
   const sec = title => <div style={{ fontSize: 13, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 12, marginTop: 10, letterSpacing: 0.3 }}>{title.toUpperCase()}</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* Pre-trade Checklist Section */}
+      {setups && setups.length > 0 && (
+        <>
+          {sec("Pre-trade checklist")}
+          <SetupChecklistSection
+            setups={setups}
+            setupChecks={form.setupChecks || {}}
+            onChange={handleSetupCheck}
+          />
+        </>
+      )}
+
+      {sec("Thông tin lệnh")}
+
       {/* Row 1 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         <div>{lbl("Ngày")}<input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} /></div>
@@ -320,7 +419,7 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel }) {
 
 // ─── Trade Card ──────────────────────────────────────────────────────────────
 
-function TradeCard({ trade, onDelete, onEdit }) {
+function TradeCard({ trade, onDelete, onEdit, setups }) {
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const resColor = trade.result === "Win" ? "win" : trade.result === "Loss" ? "loss" : "be";
@@ -330,6 +429,9 @@ function TradeCard({ trade, onDelete, onEdit }) {
     await exportCard(trade.id, fmt);
     setExporting(false);
   };
+
+  // Show checklist summary in expanded view
+  const relevantSetups = setups.filter(s => trade.setupChecks && trade.setupChecks[s.id]);
 
   return (
     <>
@@ -346,6 +448,37 @@ function TradeCard({ trade, onDelete, onEdit }) {
         </div>
         {expanded && (
           <div style={{ padding: "12px 16px", borderTop: "0.5px solid #f0f0f0", display: "flex", flexDirection: "column", gap: 9 }}>
+
+            {/* Checklist summary */}
+            {relevantSetups.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                {relevantSetups.map(setup => {
+                  const checks = trade.setupChecks[setup.id] || [];
+                  const done = checks.filter(Boolean).length;
+                  const total = setup.steps.length;
+                  return (
+                    <div key={setup.id} style={{ background: "#f7f7f5", borderRadius: 8, padding: "8px 12px" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 5 }}>
+                        {setup.name} — <span style={{ color: done === total ? "#3B6D11" : "#854F0B" }}>{done}/{total} bước</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {setup.steps.map((step, idx) => (
+                          <span key={idx} style={{
+                            fontSize: 11, padding: "2px 8px", borderRadius: 12,
+                            background: checks[idx] ? "#EAF3DE" : "#f1f1ee",
+                            color: checks[idx] ? "#3B6D11" : "#aaa",
+                            border: `0.5px solid ${checks[idx] ? "#97C459" : "#ddd"}`
+                          }}>
+                            {checks[idx] ? "✓" : "○"} {step}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {trade.structure && <div style={{ fontSize: 13 }}><span style={{ color: "#888", fontWeight: 500 }}>Structure & Bias: </span>{trade.structure}</div>}
             {trade.priceAction && <div style={{ fontSize: 13 }}><span style={{ color: "#888", fontWeight: 500 }}>Price action: </span>{trade.priceAction}</div>}
             {trade.dol && <div style={{ fontSize: 13 }}><span style={{ color: "#888", fontWeight: 500 }}>DOL: </span>{trade.dol}</div>}
@@ -438,16 +571,202 @@ function Stats({ trades }) {
   );
 }
 
+// ─── Thiết Lập Tab ────────────────────────────────────────────────────────────
+
+function SetupEditor({ setup, onSave, onCancel, onDelete }) {
+  const [name, setName] = useState(setup?.name || "");
+  const [steps, setSteps] = useState(setup?.steps || [""]);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
+
+  const addStep = () => setSteps(s => [...s, ""]);
+  const updateStep = (i, val) => setSteps(s => s.map((x, j) => j === i ? val : x));
+  const removeStep = (i) => setSteps(s => s.filter((_, j) => j !== i));
+
+  // Drag & drop reorder
+  const handleDragStart = (i) => setDragIdx(i);
+  const handleDragOver = (e, i) => { e.preventDefault(); setDragOverIdx(i); };
+  const handleDrop = (i) => {
+    if (dragIdx === null || dragIdx === i) { setDragIdx(null); setDragOverIdx(null); return; }
+    const newSteps = [...steps];
+    const [moved] = newSteps.splice(dragIdx, 1);
+    newSteps.splice(i, 0, moved);
+    setSteps(newSteps);
+    setDragIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) return alert("Vui lòng nhập tên phương pháp");
+    const cleanSteps = steps.map(s => s.trim()).filter(Boolean);
+    if (cleanSteps.length === 0) return alert("Vui lòng thêm ít nhất 1 bước");
+    onSave({ id: setup?.id || Date.now(), name: name.trim(), steps: cleanSteps });
+  };
+
+  return (
+    <div style={{ background: "#fff", border: "0.5px solid #e5e5e5", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 }}>Tên phương pháp</div>
+        <input
+          type="text"
+          placeholder="vd: ICT 2022, SMC, Price Action..."
+          value={name}
+          onChange={e => setName(e.target.value)}
+          style={{ ...inp, fontSize: 15, fontWeight: 500 }}
+        />
+      </div>
+
+      <div style={{ fontSize: 12, color: "#777", marginBottom: 8, fontWeight: 500 }}>
+        Các bước setup <span style={{ color: "#bbb", fontWeight: 400 }}>(kéo thả để đổi thứ tự)</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+        {steps.map((step, i) => (
+          <div
+            key={i}
+            draggable
+            onDragStart={() => handleDragStart(i)}
+            onDragOver={e => handleDragOver(e, i)}
+            onDrop={() => handleDrop(i)}
+            onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "4px 0",
+              opacity: dragIdx === i ? 0.4 : 1,
+              borderTop: dragOverIdx === i && dragIdx !== i ? "2px solid #185FA5" : "2px solid transparent",
+              transition: "border-color 0.1s"
+            }}
+          >
+            {/* Drag handle */}
+            <span style={{ cursor: "grab", color: "#ccc", fontSize: 16, userSelect: "none", flexShrink: 0 }}>⠿</span>
+            <span style={{ fontSize: 13, color: "#bbb", minWidth: 20, flexShrink: 0 }}>{i + 1}.</span>
+            <input
+              type="text"
+              placeholder={`Bước ${i + 1}... vd: Xác định bias W/D`}
+              value={step}
+              onChange={e => updateStep(i, e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addStep(); } }}
+              style={{ ...inp, flex: 1, fontSize: 13 }}
+            />
+            <button onClick={() => removeStep(i)} style={{ ...btnStyle, color: "#c0392b", borderColor: "#f09595", padding: "4px 10px", flexShrink: 0 }}>✕</button>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={addStep} style={{ ...btnStyle, marginBottom: 16, color: "#185FA5", borderColor: "#85B7EB" }}>+ Thêm bước</button>
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        {onDelete && <button onClick={onDelete} style={{ ...btnStyle, color: "#c0392b", borderColor: "#f09595", marginRight: "auto" }}>Xoá setup</button>}
+        {onCancel && <button onClick={onCancel} style={btnStyle}>Huỷ</button>}
+        <button onClick={handleSave} style={primaryBtn}>Lưu setup</button>
+      </div>
+    </div>
+  );
+}
+
+function ThietLapTab({ setups, onSetupsSave }) {
+  const [editing, setEditing] = useState(null); // null | "new" | setupId
+  const [editingSetup, setEditingSetup] = useState(null);
+
+  const handleSave = (saved) => {
+    const exists = setups.find(s => s.id === saved.id);
+    if (exists) {
+      onSetupsSave(setups.map(s => s.id === saved.id ? saved : s));
+    } else {
+      onSetupsSave([...setups, saved]);
+    }
+    setEditing(null);
+    setEditingSetup(null);
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Xoá setup này?")) return;
+    onSetupsSave(setups.filter(s => s.id !== id));
+    setEditing(null);
+    setEditingSetup(null);
+  };
+
+  const startEdit = (setup) => {
+    setEditingSetup(setup);
+    setEditing(setup.id);
+  };
+
+  const startNew = () => {
+    setEditingSetup(null);
+    setEditing("new");
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 14, color: "#555", lineHeight: 1.7, marginBottom: 16, background: "#f7f7f5", borderRadius: 10, padding: "12px 16px" }}>
+          <strong>Phương pháp giao dịch</strong> của bạn được định nghĩa ở đây. Mỗi setup là một checklist các bước bạn cần tuân theo trước khi vào lệnh — giúp bạn giao dịch có kỷ luật và nhất quán.
+        </div>
+      </div>
+
+      {/* List of setups */}
+      {setups.length === 0 && !editing && (
+        <div style={{ textAlign: "center", color: "#bbb", padding: "40px 0", fontSize: 14 }}>
+          Chưa có setup nào. Tạo setup đầu tiên của bạn!
+        </div>
+      )}
+
+      {setups.map(setup => (
+        editing === setup.id ? (
+          <SetupEditor
+            key={setup.id}
+            setup={editingSetup}
+            onSave={handleSave}
+            onCancel={() => { setEditing(null); setEditingSetup(null); }}
+            onDelete={() => handleDelete(setup.id)}
+          />
+        ) : (
+          <div key={setup.id} style={{ background: "#fff", border: "0.5px solid #e5e5e5", borderRadius: 12, overflow: "hidden", marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "#111", marginBottom: 4 }}>{setup.name}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {setup.steps.map((step, i) => (
+                    <span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#f1f1ee", color: "#666", border: "0.5px solid #ddd" }}>
+                      {i + 1}. {step}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => startEdit(setup)} style={{ ...btnStyle, marginLeft: 12, flexShrink: 0 }}>Sửa</button>
+            </div>
+          </div>
+        )
+      ))}
+
+      {/* New setup form */}
+      {editing === "new" && (
+        <SetupEditor
+          setup={null}
+          onSave={handleSave}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+
+      {editing !== "new" && (
+        <button onClick={startNew} style={{ ...primaryBtn, marginTop: 8 }}>+ Tạo setup mới</button>
+      )}
+    </div>
+  );
+}
+
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [tab, setTab] = useState("new");
   const [trades, setTrades] = useState(loadTrades);
   const [allModels, setAllModels] = useState(loadModels);
+  const [setups, setSetups] = useState(loadSetups);
   const [editTrade, setEditTrade] = useState(null);
 
   useEffect(() => { saveTrades(trades); }, [trades]);
   useEffect(() => { saveModels(allModels); }, [allModels]);
+  useEffect(() => { saveSetups(setups); }, [setups]);
 
   const saveTrade = (form) => {
     setTrades(ts => editTrade ? ts.map(t => t.id === form.id ? form : t) : [{ ...form, id: Date.now() }, ...ts]);
@@ -469,19 +788,30 @@ export default function App() {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px" }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 4 }}>My Trading Journal</h1>
         <p style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>Time - Price - Consistency</p>
-        <div style={{ display: "flex", borderBottom: "0.5px solid #e5e5e5", marginBottom: 24 }}>
+        <div style={{ display: "flex", borderBottom: "0.5px solid #e5e5e5", marginBottom: 24, overflowX: "auto" }}>
           <button style={tabStyle("new")} onClick={() => { setEditTrade(null); setTab("new"); }}>+ Lệnh mới</button>
           <button style={tabStyle("history")} onClick={() => setTab("history")}>Lịch sử ({trades.length})</button>
           <button style={tabStyle("stats")} onClick={() => setTab("stats")}>Thống kê</button>
+          <button style={tabStyle("thietlap")} onClick={() => setTab("thietlap")}>Thiết lập</button>
         </div>
-        {tab === "new" && <TradeForm initial={editTrade} onSave={saveTrade} onCancel={editTrade ? () => { setEditTrade(null); setTab("history"); } : null} allModels={allModels} onAddModel={addModel} />}
+        {tab === "new" && (
+          <TradeForm
+            initial={editTrade}
+            onSave={saveTrade}
+            onCancel={editTrade ? () => { setEditTrade(null); setTab("history"); } : null}
+            allModels={allModels}
+            onAddModel={addModel}
+            setups={setups}
+          />
+        )}
         {tab === "history" && (
           <div>
             {trades.length === 0 && <div style={{ textAlign: "center", color: "#bbb", padding: "60px 0", fontSize: 14 }}>Chưa có lệnh nào. Hãy thêm lệnh đầu tiên!</div>}
-            {trades.map(t => <TradeCard key={t.id} trade={t} onDelete={deleteTrade} onEdit={startEdit} />)}
+            {trades.map(t => <TradeCard key={t.id} trade={t} onDelete={deleteTrade} onEdit={startEdit} setups={setups} />)}
           </div>
         )}
         {tab === "stats" && <Stats trades={trades} />}
+        {tab === "thietlap" && <ThietLapTab setups={setups} onSetupsSave={setSetups} />}
       </div>
     </div>
   );
