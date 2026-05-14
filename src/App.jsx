@@ -16,8 +16,8 @@ const emptyForm = () => ({
   psychologyTags: [], psychology: "", lesson: "", images: [], result: "", pnl: "",
 });
 
-const STORAGE_KEY = "ict_journal_trades";
-const MODELS_KEY = "ict_journal_models";
+const STORAGE_KEY = "my_journal_trades";
+const MODELS_KEY = "my_journal_models";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,13 +40,18 @@ async function exportCard(tradeId, format = "png") {
   const el = document.getElementById(`export-card-${tradeId}`);
   if (!el) return;
   el.style.display = "block";
-  await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 150));
   const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
   el.style.display = "none";
   if (format === "pdf") {
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [canvas.width / 2, canvas.height / 2] });
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+    const pxW = canvas.width / 2;
+    const pxH = canvas.height / 2;
+    // Convert px to mm (96dpi: 1px = 0.2646mm)
+    const mmW = pxW * 0.2646;
+    const mmH = pxH * 0.2646;
+    const pdf = new jsPDF({ orientation: mmW > mmH ? "landscape" : "portrait", unit: "mm", format: [mmW, mmH] });
+    pdf.addImage(imgData, "PNG", 0, 0, mmW, mmH);
     pdf.save(`trade-${tradeId}.pdf`);
   } else {
     const link = document.createElement("a");
@@ -113,7 +118,7 @@ function ExportCard({ trade }) {
         </div>
       )}
 
-      <div style={{ marginTop: 20, fontSize: 11, color: "#bbb", textAlign: "right" }}>ICT Trading Journal</div>
+      <div style={{ marginTop: 20, fontSize: 11, color: "#bbb", textAlign: "right" }}>My Trading Journal</div>
     </div>
   );
 }
@@ -462,7 +467,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 4 }}>ICT Trading Journal</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#111", marginBottom: 4 }}>My Trading Journal</h1>
         <p style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>Data lưu trên máy của bạn</p>
         <div style={{ display: "flex", borderBottom: "0.5px solid #e5e5e5", marginBottom: 24 }}>
           <button style={tabStyle("new")} onClick={() => { setEditTrade(null); setTab("new"); }}>+ Lệnh mới</button>
