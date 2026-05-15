@@ -182,89 +182,69 @@ const chipStyle = (active, colors) => ({
 
 // ─── Setup Checklist in Form ─────────────────────────────────────────────────
 
-function SetupChecklistSection({ setups, setupChecks, onChange }) {
-  if (!setups || setups.length === 0) return null;
+function SetupChecklist({ setup, checks, onChange }) {
+  const checkedCount = checks.filter(Boolean).length;
+  const total = setup.steps.length;
+  const allDone = checkedCount === total && total > 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {setups.map(setup => {
-        const checks = setupChecks[setup.id] || setup.steps.map(() => false);
-        const checkedCount = checks.filter(Boolean).length;
-        const total = setup.steps.length;
-        const allDone = checkedCount === total && total > 0;
-
-        return (
-          <div key={setup.id} style={{
-            border: `1px solid ${allDone ? "#97C459" : "#e5e5e5"}`,
-            borderRadius: 10,
-            overflow: "hidden",
-            background: allDone ? "#f9fdf5" : "#fafafa",
-            transition: "all 0.2s"
+    <div style={{
+      border: `1px solid ${allDone ? "#97C459" : "#e5e5e5"}`,
+      borderRadius: 10, overflow: "hidden",
+      background: allDone ? "#f9fdf5" : "#fff",
+      transition: "all 0.2s"
+    }}>
+      <div style={{
+        padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: allDone ? "#EAF3DE" : "#f7f7f5",
+        borderBottom: `0.5px solid ${allDone ? "#97C459" : "#e5e5e5"}`
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: allDone ? "#3B6D11" : "#333" }}>
+          {setup.name}
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: allDone ? "#3B6D11" : checkedCount > 0 ? "#854F0B" : "#bbb" }}>
+          {checkedCount}/{total} {allDone ? "✓" : ""}
+        </span>
+      </div>
+      <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+        {setup.steps.map((step, idx) => (
+          <label key={idx} style={{
+            display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+            padding: "5px 6px", borderRadius: 6,
+            background: checks[idx] ? "#f0fae8" : "transparent",
+            transition: "background 0.15s"
           }}>
-            {/* Header */}
-            <div style={{
-              padding: "10px 14px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              background: allDone ? "#EAF3DE" : "#f1f1ee",
-              borderBottom: `0.5px solid ${allDone ? "#97C459" : "#e5e5e5"}`
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: allDone ? "#3B6D11" : "#333" }}>
-                  {setup.name}
-                </span>
-                <span style={{ fontSize: 11, color: allDone ? "#3B6D11" : "#999" }}>
-                  Pre-trade checklist
-                </span>
-              </div>
-              <span style={{
-                fontSize: 12, fontWeight: 600,
-                color: allDone ? "#3B6D11" : checkedCount > 0 ? "#854F0B" : "#bbb"
-              }}>
-                {checkedCount}/{total} {allDone ? "✓" : ""}
-              </span>
-            </div>
-
-            {/* Steps */}
-            <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-              {setup.steps.map((step, idx) => (
-                <label key={idx} style={{
-                  display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
-                  padding: "5px 6px", borderRadius: 6,
-                  background: checks[idx] ? "#f0fae8" : "transparent",
-                  transition: "background 0.15s"
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={checks[idx] || false}
-                    onChange={() => {
-                      const newChecks = [...checks];
-                      newChecks[idx] = !newChecks[idx];
-                      onChange(setup.id, newChecks);
-                    }}
-                    style={{ marginTop: 2, accentColor: "#3B6D11", width: 15, height: 15, flexShrink: 0 }}
-                  />
-                  <span style={{
-                    fontSize: 13, color: checks[idx] ? "#3B6D11" : "#444", lineHeight: 1.5,
-                    textDecoration: checks[idx] ? "none" : "none"
-                  }}>
-                    <span style={{ color: "#bbb", marginRight: 5, fontWeight: 500 }}>{idx + 1}.</span>
-                    {step}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+            <input
+              type="checkbox"
+              checked={checks[idx] || false}
+              onChange={() => {
+                const n = [...checks];
+                n[idx] = !n[idx];
+                onChange(n);
+              }}
+              style={{ marginTop: 2, accentColor: "#3B6D11", width: 15, height: 15, flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13, color: checks[idx] ? "#3B6D11" : "#444", lineHeight: 1.5 }}>
+              <span style={{ color: "#bbb", marginRight: 5, fontWeight: 500 }}>{idx + 1}.</span>
+              {step}
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ─── Form ────────────────────────────────────────────────────────────────────
+// ─── New Trade Flow (3 steps) ─────────────────────────────────────────────────
 
-function TradeForm({ initial, onSave, onCancel, allModels, onAddModel, setups }) {
+function NewTradeFlow({ initial, onSave, onCancel, allModels, onAddModel, setups }) {
+  // When editing an existing trade, skip the selection steps
+  const isEditing = !!initial;
+
+  const [step, setStep] = useState(isEditing ? "form" : "position");
   const [form, setForm] = useState(initial || emptyForm());
   const [newModel, setNewModel] = useState("");
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const toggleArr = (k, v) => { const a = form[k] || []; set(k, a.includes(v) ? a.filter(x => x !== v) : [...a, v]); };
   const handleImages = useCallback(updater => setForm(f => ({ ...f, images: typeof updater === "function" ? updater(f.images) : updater })), []);
@@ -274,30 +254,183 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel, setups })
     setForm(f => ({ ...f, setupChecks: { ...f.setupChecks, [setupId]: newChecks } }));
   };
 
+  const pickPosition = (pos) => {
+    set("position", pos);
+    if (setups.length === 0) {
+      setStep("form");
+    } else {
+      setStep("setup");
+    }
+  };
+
+  const pickSetup = (setupId) => {
+    // Toggle setup selection — can pick multiple
+    const current = form.selectedSetupIds || [];
+    const next = current.includes(setupId)
+      ? current.filter(id => id !== setupId)
+      : [...current, setupId];
+    setForm(f => ({ ...f, selectedSetupIds: next }));
+  };
+
+  const confirmSetup = () => setStep("form");
+
   const lbl = txt => <div style={{ fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 }}>{txt}</div>;
   const sec = title => <div style={{ fontSize: 13, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 12, marginTop: 10, letterSpacing: 0.3 }}>{title.toUpperCase()}</div>;
 
+  const isBuy = form.position === "Buy";
+  const selectedSetupIds = form.selectedSetupIds || [];
+  const selectedSetups = setups.filter(s => selectedSetupIds.includes(s.id));
+
+  // ── Step 1: Pick position ──
+  if (step === "position") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 60, paddingBottom: 60, gap: 32 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#333", marginBottom: 8 }}>Bạn đang vào lệnh nào?</div>
+          <div style={{ fontSize: 13, color: "#aaa" }}>Chọn hướng giao dịch để bắt đầu</div>
+        </div>
+        <div style={{ display: "flex", gap: 20 }}>
+          <button onClick={() => pickPosition("Buy")} style={{
+            width: 160, height: 100, cursor: "pointer", borderRadius: 14, border: "1.5px solid #97C459",
+            background: "#EAF3DE", color: "#3B6D11", fontSize: 22, fontWeight: 700,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+            boxShadow: "0 2px 8px rgba(59,109,17,0.10)", transition: "transform 0.1s, box-shadow 0.1s"
+          }}>
+            <span style={{ fontSize: 28 }}>▲</span>
+            <span>Buy</span>
+          </button>
+          <button onClick={() => pickPosition("Sell")} style={{
+            width: 160, height: 100, cursor: "pointer", borderRadius: 14, border: "1.5px solid #F09595",
+            background: "#FCEBEB", color: "#A32D2D", fontSize: 22, fontWeight: 700,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+            boxShadow: "0 2px 8px rgba(163,45,45,0.10)", transition: "transform 0.1s, box-shadow 0.1s"
+          }}>
+            <span style={{ fontSize: 28 }}>▼</span>
+            <span>Sell</span>
+          </button>
+        </div>
+        {onCancel && <button onClick={onCancel} style={{ ...btnStyle, color: "#aaa" }}>Huỷ</button>}
+      </div>
+    );
+  }
+
+  // ── Step 2: Pick setup ──
+  if (step === "setup") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Header with position badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+          <button onClick={() => setStep("position")} style={{ ...btnStyle, color: "#aaa", padding: "4px 10px", fontSize: 12 }}>← Quay lại</button>
+          <span style={{
+            padding: "3px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+            background: isBuy ? "#EAF3DE" : "#FCEBEB",
+            color: isBuy ? "#3B6D11" : "#A32D2D",
+            border: `1px solid ${isBuy ? "#97C459" : "#F09595"}`
+          }}>
+            {isBuy ? "▲ Buy" : "▼ Sell"}
+          </span>
+        </div>
+
+        <div style={{ textAlign: "center", paddingBottom: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#333", marginBottom: 4 }}>Chọn setup / chiến lược</div>
+          <div style={{ fontSize: 13, color: "#aaa" }}>Có thể chọn nhiều setup cùng lúc</div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {setups.map(setup => {
+            const selected = selectedSetupIds.includes(setup.id);
+            return (
+              <button key={setup.id} onClick={() => pickSetup(setup.id)} style={{
+                textAlign: "left", padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                border: `1.5px solid ${selected ? "#185FA5" : "#e5e5e5"}`,
+                background: selected ? "#EBF4FD" : "#fff",
+                boxShadow: selected ? "0 0 0 3px rgba(24,95,165,0.08)" : "0 1px 3px rgba(0,0,0,0.04)",
+                transition: "all 0.15s"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: selected ? "#185FA5" : "#222" }}>
+                    {selected ? "✓ " : ""}{setup.name}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#aaa" }}>{setup.steps.length} bước</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {setup.steps.slice(0, 4).map((step, i) => (
+                    <span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "#f1f1ee", color: "#666", border: "0.5px solid #ddd" }}>
+                      {i + 1}. {step}
+                    </span>
+                  ))}
+                  {setup.steps.length > 4 && <span style={{ fontSize: 11, color: "#bbb" }}>+{setup.steps.length - 4} nữa</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+          <button onClick={confirmSetup} style={{ ...btnStyle, color: "#aaa" }}>Bỏ qua</button>
+          <button
+            onClick={confirmSetup}
+            disabled={selectedSetupIds.length === 0}
+            style={{ ...primaryBtn, opacity: selectedSetupIds.length === 0 ? 0.4 : 1 }}
+          >
+            Tiếp tục →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 3: Fill form ──
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-      {/* Pre-trade Checklist Section */}
-      {setups && setups.length > 0 && (
+      {/* Top bar: position + setup badges + back button */}
+      {!isEditing && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+          <button onClick={() => setStep("setup")} style={{ ...btnStyle, color: "#aaa", padding: "4px 10px", fontSize: 12 }}>← Quay lại</button>
+          <span style={{
+            padding: "3px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+            background: isBuy ? "#EAF3DE" : "#FCEBEB",
+            color: isBuy ? "#3B6D11" : "#A32D2D",
+            border: `1px solid ${isBuy ? "#97C459" : "#F09595"}`
+          }}>
+            {isBuy ? "▲ Buy" : "▼ Sell"}
+          </span>
+          {selectedSetups.map(s => (
+            <span key={s.id} style={{ padding: "3px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500, background: "#EBF4FD", color: "#185FA5", border: "1px solid #85B7EB" }}>
+              {s.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Pre-trade checklist for selected setups */}
+      {selectedSetups.length > 0 && (
         <>
           {sec("Pre-trade checklist")}
-          <SetupChecklistSection
-            setups={setups}
-            setupChecks={form.setupChecks || {}}
-            onChange={handleSetupCheck}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {selectedSetups.map(setup => (
+              <SetupChecklist
+                key={setup.id}
+                setup={setup}
+                checks={form.setupChecks?.[setup.id] || setup.steps.map(() => false)}
+                onChange={(newChecks) => handleSetupCheck(setup.id, newChecks)}
+              />
+            ))}
+          </div>
         </>
       )}
 
       {sec("Thông tin lệnh")}
 
-      {/* Row 1 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      {/* Date + Ticker (position already chosen) */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>{lbl("Ngày")}<input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} /></div>
         <div>{lbl("Ticker")}<input type="text" placeholder="NQ, ES, EURUSD..." value={form.ticker} onChange={e => set("ticker", e.target.value.toUpperCase())} style={inp} /></div>
+      </div>
+
+      {/* If editing, show position picker too */}
+      {isEditing && (
         <div>
           {lbl("Position")}
           <div style={{ display: "flex", gap: 8 }}>
@@ -312,7 +445,7 @@ function TradeForm({ initial, onSave, onCancel, allModels, onAddModel, setups })
             ))}
           </div>
         </div>
-      </div>
+      )}
 
       {sec("Lý do vào lệnh")}
 
