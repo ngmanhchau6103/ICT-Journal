@@ -21,7 +21,7 @@ const TEXT = {
   vi: {
     newTrade: "+ Lệnh mới",
     history: "Lịch sử",
-    stats: "📅 Thống kê",
+    stats: "Thống kê",
     settings: "Thiết lập",
     madeBy: "Made by Chau Nguyen",
 
@@ -147,7 +147,7 @@ const TEXT = {
   en: {
     newTrade: "+ New Trade",
     history: "History",
-    stats: "📅 Statistics",
+    stats: "Statistics",
     settings: "Settings",
     madeBy: "Made by Chau Nguyen",
 
