@@ -62,6 +62,25 @@ const TEXT = {
 
     psychology: "Tâm lý",
     psychologyPlaceholder: "Ghi thêm nếu cần...",
+
+    disciplineReview: "Đánh giá kỷ luật",
+    followedPlan: "Có theo đúng plan không?",
+    followedYes: "Có",
+    followedNo: "Không",
+    followedPartial: "Một phần",
+    mistakes: "Lỗi mắc phải",
+    ruleBrokenNote: "Ghi chú rule bị phá",
+    ruleBrokenPlaceholder: "vd: Vào lệnh trước confirmation, dời SL, trade ngoài plan...",
+    m_fomo: "FOMO",
+    m_revenge: "Revenge trade",
+    m_noConfirmation: "Vào thiếu confirmation",
+    m_movedSL: "Dời SL",
+    m_exitEarly: "Chốt non",
+    m_overtrade: "Overtrading",
+    m_outsideSession: "Trade ngoài session",
+    m_ignoreBias: "Bỏ qua HTF bias",
+    m_poorRisk: "Quản lý rủi ro kém",
+
     lesson: "Bài học rút ra",
     lessonPlaceholder: "vd: Không trade revenge, chờ confirmation...",
     chartImages: "Hình ảnh chart (không giới hạn)",
@@ -188,6 +207,25 @@ const TEXT = {
 
     psychology: "Psychology",
     psychologyPlaceholder: "Add more notes if needed...",
+
+    disciplineReview: "Discipline review",
+    followedPlan: "Did you follow your plan?",
+    followedYes: "Yes",
+    followedNo: "No",
+    followedPartial: "Partially",
+    mistakes: "Mistakes",
+    ruleBrokenNote: "Rule broken note",
+    ruleBrokenPlaceholder: "e.g. Entered before confirmation, moved SL, traded outside plan...",
+    m_fomo: "FOMO",
+    m_revenge: "Revenge trade",
+    m_noConfirmation: "Entered without confirmation",
+    m_movedSL: "Moved SL",
+    m_exitEarly: "Closed too early",
+    m_overtrade: "Overtrading",
+    m_outsideSession: "Traded outside session",
+    m_ignoreBias: "Ignored HTF bias",
+    m_poorRisk: "Poor risk management",
+
     lesson: "Lesson learned",
     lessonPlaceholder: "e.g. No revenge trades, wait for confirmation...",
     chartImages: "Chart images (unlimited)",
@@ -286,6 +324,23 @@ const PSYCHOLOGY_OPTIONS = [
   { value: "Để lệnh chạy tốt", key: "p_letRun" },
 ];
 
+const MISTAKE_OPTIONS = [
+  { value: "FOMO", key: "m_fomo" },
+  { value: "Revenge trade", key: "m_revenge" },
+  { value: "Entered without confirmation", key: "m_noConfirmation" },
+  { value: "Moved SL", key: "m_movedSL" },
+  { value: "Closed too early", key: "m_exitEarly" },
+  { value: "Overtrading", key: "m_overtrade" },
+  { value: "Traded outside session", key: "m_outsideSession" },
+  { value: "Ignored HTF bias", key: "m_ignoreBias" },
+  { value: "Poor risk management", key: "m_poorRisk" },
+];
+
+const mistakeLabel = (value, t) => {
+  const item = MISTAKE_OPTIONS.find(m => m.value === value);
+  return item ? t(item.key) : value;
+};
+
 const psychologyLabel = (value, t) => {
   const item = PSYCHOLOGY_OPTIONS.find(p => p.value === value);
   return item ? t(item.key) : value;
@@ -330,6 +385,9 @@ const emptyForm = () => ({
   session: "",
   psychologyTags: [],
   psychology: "",
+  followedPlan: "",
+  mistakeTags: [],
+  ruleBrokenNote: "",
   lesson: "",
   images: [],
   result: "",
@@ -786,6 +844,45 @@ function ExportCard({ trade, setups, t }) {
             ]
               .filter(Boolean)
               .join("  ·  ")}
+          </div>
+        </div>
+      )}
+
+      {(trade.followedPlan || trade.mistakeTags?.length > 0 || trade.ruleBrokenNote) && (
+        <div
+          style={{
+            padding: "8px 0",
+            borderBottom: "0.5px solid #f0f0ee",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#bbb", marginBottom: 3 }}>
+            {t("disciplineReview").toUpperCase()}
+          </div>
+
+          <div style={{ fontSize: 14, color: "#222", lineHeight: 1.6 }}>
+            {trade.followedPlan && (
+              <div>
+                {t("followedPlan")}:{" "}
+                {trade.followedPlan === "Yes"
+                  ? t("followedYes")
+                  : trade.followedPlan === "No"
+                    ? t("followedNo")
+                    : t("followedPartial")}
+              </div>
+            )}
+
+            {(trade.mistakeTags || []).length > 0 && (
+              <div>
+                {t("mistakes")}:{" "}
+                {(trade.mistakeTags || []).map(tag => mistakeLabel(tag, t)).join(" · ")}
+              </div>
+            )}
+
+            {trade.ruleBrokenNote && (
+              <div>
+                {t("ruleBrokenNote")}: {trade.ruleBrokenNote}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1458,6 +1555,59 @@ function NewTradeFlow({
         />
       </div>
 
+      <SecTitle txt={t("disciplineReview")} />
+
+      <div>
+        <div style={lbl}>{t("followedPlan")}</div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {[
+            { val: "Yes", label: t("followedYes"), color: { bg: "#EAF3DE", text: "#3B6D11", border: "#97C459" } },
+            { val: "No", label: t("followedNo"), color: { bg: "#FCEBEB", text: "#A32D2D", border: "#F09595" } },
+            { val: "Partially", label: t("followedPartial"), color: { bg: "#FAEEDA", text: "#854F0B", border: "#EF9F27" } },
+          ].map(o => (
+            <button
+              key={o.val}
+              onClick={() => set("followedPlan", form.followedPlan === o.val ? "" : o.val)}
+              style={chipStyle(form.followedPlan === o.val, o.color)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div style={lbl}>{t("mistakes")}</div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+          {MISTAKE_OPTIONS.map(m => (
+            <button
+              key={m.value}
+              onClick={() => toggleArr("mistakeTags", m.value)}
+              style={chipStyle((form.mistakeTags || []).includes(m.value), {
+                bg: "#FFF0E6",
+                text: "#8A4B12",
+                border: "#F0B36A",
+              })}
+            >
+              {t(m.key)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div style={lbl}>{t("ruleBrokenNote")}</div>
+
+        <textarea
+          rows={2}
+          placeholder={t("ruleBrokenPlaceholder")}
+          value={form.ruleBrokenNote || ""}
+          onChange={e => set("ruleBrokenNote", e.target.value)}
+          style={{ ...inp, resize: "vertical" }}
+        />
+      </div>
       <div>
         <div style={lbl}>{t("lesson")}</div>
 
@@ -1674,6 +1824,64 @@ function TradeCard({ trade, onDelete, onEdit, setups, t }) {
                 ]
                   .filter(Boolean)
                   .join(" · ")}
+              </div>
+            )}
+
+            {(trade.followedPlan || trade.mistakeTags?.length > 0 || trade.ruleBrokenNote) && (
+              <div
+                style={{
+                  background: "#fffaf5",
+                  border: "0.5px solid #f0d8bd",
+                  borderRadius: 8,
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                {trade.followedPlan && (
+                  <div>
+                    <span style={{ color: "#888", fontWeight: 500 }}>
+                      {t("followedPlan")}:{" "}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color:
+                          trade.followedPlan === "Yes"
+                            ? "#3B6D11"
+                            : trade.followedPlan === "No"
+                              ? "#A32D2D"
+                              : "#854F0B",
+                      }}
+                    >
+                      {trade.followedPlan === "Yes"
+                        ? t("followedYes")
+                        : trade.followedPlan === "No"
+                          ? t("followedNo")
+                          : t("followedPartial")}
+                    </span>
+                  </div>
+                )}
+
+                {(trade.mistakeTags || []).length > 0 && (
+                  <div>
+                    <span style={{ color: "#888", fontWeight: 500 }}>
+                      {t("mistakes")}:{" "}
+                    </span>
+                    {(trade.mistakeTags || []).map(tag => mistakeLabel(tag, t)).join(" · ")}
+                  </div>
+                )}
+
+                {trade.ruleBrokenNote && (
+                  <div>
+                    <span style={{ color: "#888", fontWeight: 500 }}>
+                      {t("ruleBrokenNote")}:{" "}
+                    </span>
+                    {trade.ruleBrokenNote}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2417,6 +2625,41 @@ function Stats({ trades, setups, sessions, t }) {
 
   const wr = withResult.length ? ((wins / withResult.length) * 100).toFixed(1) : "—";
 
+  const followedYes = trades.filter(trade => trade.followedPlan === "Yes").length;
+  const followedNo = trades.filter(trade => trade.followedPlan === "No").length;
+  const followedPartial = trades.filter(trade => trade.followedPlan === "Partially").length;
+
+  const followedWithResult = trades.filter(
+    trade => trade.followedPlan === "Yes" && trade.result
+  );
+  const notFollowedWithResult = trades.filter(
+    trade => trade.followedPlan === "No" && trade.result
+  );
+
+  const followedWR = followedWithResult.length
+    ? (
+        (followedWithResult.filter(trade => trade.result === "Win").length /
+          followedWithResult.length) *
+        100
+      ).toFixed(0)
+    : "—";
+
+  const notFollowedWR = notFollowedWithResult.length
+    ? (
+        (notFollowedWithResult.filter(trade => trade.result === "Win").length /
+          notFollowedWithResult.length) *
+        100
+      ).toFixed(0)
+    : "—";
+
+  const mistakeStats = MISTAKE_OPTIONS.map(m => ({
+    value: m.value,
+    label: t(m.key),
+    count: trades.filter(trade => (trade.mistakeTags || []).includes(m.value)).length,
+  }))
+    .filter(m => m.count > 0)
+    .sort((a, b) => b.count - a.count);
+
   const StatCard = ({ label, val, color }) => (
     <div
       style={{
@@ -2500,6 +2743,100 @@ function Stats({ trades, setups, sessions, t }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#888",
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t("followedPlan")}
+              </div>
+
+              <div
+                style={{
+                  background: "#f7f7f5",
+                  borderRadius: 8,
+                  padding: "12px 14px",
+                  fontSize: 13,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{t("followedYes")}</span>
+                  <span style={{ color: "#3B6D11", fontWeight: 600 }}>
+                    {followedYes} · {followedWR}% WR
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{t("followedNo")}</span>
+                  <span style={{ color: "#A32D2D", fontWeight: 600 }}>
+                    {followedNo} · {notFollowedWR}% WR
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{t("followedPartial")}</span>
+                  <span style={{ color: "#854F0B", fontWeight: 600 }}>
+                    {followedPartial}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#888",
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {t("mistakes")}
+              </div>
+
+              {mistakeStats.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#bbb" }}>{t("noData")}</div>
+              ) : (
+                <div
+                  style={{
+                    background: "#f7f7f5",
+                    borderRadius: 8,
+                    padding: "12px 14px",
+                    fontSize: 13,
+                  }}
+                >
+                  {mistakeStats.map(m => (
+                    <div
+                      key={m.value}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        padding: "7px 0",
+                        borderBottom: "0.5px solid #e5e5e5",
+                      }}
+                    >
+                      <span>{m.label}</span>
+                      <span style={{ color: "#8A4B12", fontWeight: 600 }}>
+                        {m.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <div
             style={{
               fontSize: 13,
