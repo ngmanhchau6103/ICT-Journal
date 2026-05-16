@@ -8,6 +8,7 @@ const PSYCHOLOGY_OPTIONS = ["Tự tin, kiên nhẫn","FOMO","Revenge trade","H�
 const STORAGE_KEY  = "my_journal_trades";
 const SETUPS_KEY   = "my_journal_setups";
 const SESSIONS_KEY = "my_journal_sessions";
+const PNL_MODE_KEY = "my_journal_pnl_mode";
 const DEFAULT_SESSIONS = ["Asia","London","Pre-market NY AM","NY AM Macro 09:45–10:15","NY AM Macro 10:45–11:15"];
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
@@ -41,21 +42,27 @@ const emptyForm = () => ({
   lesson: "", images: [], result: "", pnl: "",
 });
 
-const normalizePnl = (result, pnl) => {
+const normalizePnl = (result, pnl, pnlMode = "R") => {
   const raw = String(pnl || "").trim();
   if (!raw) return "";
 
-  // Nếu nhập 0 hoặc 0R thì giữ nguyên, vì đây là hòa vốn thật sự
-  if (raw === "0" || raw.toLowerCase() === "0r") return raw;
+  const isZero = raw === "0" || raw.toLowerCase() === "0r";
+  if (isZero) return pnlMode === "R" ? "0R" : "0";
 
   // Bỏ dấu + / - cũ để tránh bị ++ hoặc --
-  const unsigned = raw.replace(/^[+-]\s*/, "");
+  let unsigned = raw.replace(/^[+-]\s*/, "").trim();
+
+  // Nếu đang ghi theo R, tự thêm R nếu người dùng chỉ nhập số
+  if (pnlMode === "R") {
+    unsigned = unsigned.replace(/r$/i, "");
+    unsigned = `${unsigned}R`;
+  }
 
   if (result === "Win") return `+${unsigned}`;
   if (result === "Loss") return `-${unsigned}`;
 
-  // BE cho phép cả + hoặc -, nhưng bắt buộc người dùng tự nhập dấu
-  return raw;
+  // BE giữ dấu người dùng tự nhập
+  return raw.startsWith("+") || raw.startsWith("-") ? `${raw[0]}${unsigned}` : raw;
 };
 
 const validatePnl = (result, pnl) => {
@@ -204,7 +211,7 @@ function ExportCard({ trade, setups }) {
 }
 
 // ─── New Trade Flow ───────────────────────────────────────────────────────────
-function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
+function NewTradeFlow({ initial, onSave, onCancel, setups, sessions, pnlMode }) {
   const isEditing = !!initial;
   const [flowStep, setFlowStep] = useState(isEditing ? "form" : "pick");
   const [form, setForm] = useState(() => initial ? { ...emptyForm(), ...initial } : emptyForm());
@@ -380,14 +387,22 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
           </div>
         </div>
         <div>
-          <div style={lbl}>P&L (R hoặc $)</div>
+          <div style={lbl}>P/L {pnlMode === "R" ? "(Theo R:R)" : "(Theo số tiền)"}</div>
           <input
             type="text"
-            placeholder={form.result === "Loss" ? "vd: 1R hoặc 98" : form.result === "BE" ? "vd: +0.2R hoặc -0.1R" : "vd: 2R hoặc 98"}
-            value={form.pnl}
-            onChange={e => set("pnl", e.target.value)}
-            style={inp}
-          />
+            placeholder={
+              pnlMode === "R"
+                ? form.result === "BE"
+                  ? "vd: +0.2 hoặc -0.1"
+                  : "vd: 2 hoặc 1.5"
+                : form.result === "BE"
+                  ? "vd: +20 hoặc -15"
+                  : "vd: 98 hoặc 250"
+            }
+  value={form.pnl}
+  onChange={e => set("pnl", e.target.value)}
+  style={inp}
+/>
         </div>
       </div>
       <div>
@@ -866,7 +881,7 @@ function SetupEditor({ setup, onSave, onCancel, onDelete }) {
 }
 
 // ─── ThietLap Tab ─────────────────────────────────────────────────────────────
-function ThietLapTab({ setups, onSetupsSave, sessions, onSessionsSave }) {
+function ThietLapTab({ setups, onSetupsSave, sessions, onSessionsSave, pnlMode, onPnlModeSave }) {
   const [editingId, setEditingId] = useState(null);
   const [editingSetup, setEditingSetup] = useState(null);
   const [newSession, setNewSession] = useState("");
@@ -891,6 +906,44 @@ function ThietLapTab({ setups, onSetupsSave, sessions, onSessionsSave }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>
+          Đơn vị ghi nhận P/L
+        </div>
+        <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>
+          Chọn cách bạn muốn ghi nhận kết quả mỗi lệnh. App sẽ tự thêm dấu + / - theo Win hoặc Loss.
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => onPnlModeSave("R")}
+            style={{
+              ...btnStyle,
+              padding: "10px 18px",
+              border: `1.5px solid ${pnlMode === "R" ? "#185FA5" : "#ddd"}`,
+              background: pnlMode === "R" ? "#EBF4FD" : "#fff",
+              color: pnlMode === "R" ? "#185FA5" : "#777",
+              fontWeight: pnlMode === "R" ? 600 : 400,
+            }}
+          >
+            Theo R:R
+          </button>
+
+          <button
+            onClick={() => onPnlModeSave("money")}
+            style={{
+              ...btnStyle,
+              padding: "10px 18px",
+              border: `1.5px solid ${pnlMode === "money" ? "#185FA5" : "#ddd"}`,
+              background: pnlMode === "money" ? "#EBF4FD" : "#fff",
+              color: pnlMode === "money" ? "#185FA5" : "#777",
+              fontWeight: pnlMode === "money" ? 600 : 400,
+            }}
+          >
+            Theo số tiền
+          </button>
+        </div>
+      </div>
+      
       <div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>Phương pháp giao dịch</div>
         <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Mỗi setup là checklist các bước bạn cần làm trước khi vào lệnh.</div>
@@ -943,12 +996,14 @@ export default function App() {
   const [trades,    setTrades]    = useState(() => load(STORAGE_KEY,  []));
   const [setups,    setSetups]    = useState(() => load(SETUPS_KEY,   []));
   const [sessions,  setSessions]  = useState(() => load(SESSIONS_KEY, DEFAULT_SESSIONS));
+  const [pnlMode, setPnlMode] = useState(() => load(PNL_MODE_KEY, "R"));
   const [editTrade, setEditTrade] = useState(null);
   const [dayModal,  setDayModal]  = useState(null); // { dateStr, dayTrades }
 
   useEffect(() => { persist(STORAGE_KEY,  trades);   }, [trades]);
   useEffect(() => { persist(SETUPS_KEY,   setups);   }, [setups]);
   useEffect(() => { persist(SESSIONS_KEY, sessions); }, [sessions]);
+  useEffect(() => { persist(PNL_MODE_KEY, pnlMode); }, [pnlMode]);
 
   // FIX: id assigned here on save, not inside emptyForm
   const saveTrade = form => {
@@ -956,7 +1011,7 @@ export default function App() {
 
     const cleanForm = {
       ...form,
-      pnl: normalizePnl(form.result, form.pnl),
+      pnl: normalizePnl(form.result, form.pnl, pnlMode),
     };
 
     setTrades(ts => editTrade
@@ -1002,7 +1057,7 @@ export default function App() {
           <button style={tabStyle("thietlap")} onClick={() => setTab("thietlap")}>Thiết lập</button>
         </div>
 
-        {tab === "new"      && <NewTradeFlow initial={editTrade} onSave={saveTrade} onCancel={editTrade ? () => { setEditTrade(null); setTab("history"); } : null} setups={setups} sessions={sessions} />}
+        {tab === "new" && (<NewTradeFlow initial={editTrade} onSave={saveTrade} onCancel={() => { setEditTrade(null); setTab("history"); }} setups={setups} sessions={sessions} pnlMode={pnlMode} />)}
         {tab === "history"  && <HistoryTab trades={trades} setups={setups} sessions={sessions} onDelete={deleteTrade} onEdit={startEdit} />}
         {tab === "stats"    && (
           <StatsTab
@@ -1012,7 +1067,7 @@ export default function App() {
           onSelectDay={(dateStr, dayTrades) => setDayModal({ dateStr, dayTrades })}
           />
         )}
-        {tab === "thietlap" && <ThietLapTab setups={setups} onSetupsSave={setSetups} sessions={sessions} onSessionsSave={setSessions} />}
+        {tab === "thietlap" && <ThietLapTab setups={setups} onSetupsSave={setSetups} sessions={sessions} onSessionsSave={setSessions} pnlMode={pnlMode} onPnlModeSave={setPnlMode} />}
 
         {dayModal && (
           <DayModal
