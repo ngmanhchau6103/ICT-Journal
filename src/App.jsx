@@ -1069,7 +1069,35 @@ export default function App() {
           />
         )}
         {tab === "thietlap" && <ThietLapTab setups={setups} onSetupsSave={setSetups} sessions={sessions} onSessionsSave={setSessions} pnlMode={pnlMode} onPnlModeSave={setPnlMode} />}
+        <div
+          style={{
+              marginTop: 36,
+              padding: "18px 16px",
+              borderTop: "0.5px solid #e5e5e5",
+              textAlign: "center",
+              color: "#888",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            <div style={{ marginBottom: 10 }}>
+              Bạn đang dùng bản thử nghiệm đầu tiên của <strong>My Trading Journal</strong>.  
+              Nếu có lỗi, góp ý hoặc tính năng bạn muốn thêm, hãy gửi feedback cho mình nhé.
+            </div>
 
+            <button
+              onClick={() => window.open("https://docs.google.com/forms/d/e/1FAIpQLScnbHmFq1i-Tufk7DgWLbjBL6DaVxnBRiBKckXxi1ffVh2F1g/viewform?usp=dialog", "_blank")}
+              style={{
+                ...btnStyle,
+                borderColor: "#85B7EB",
+                color: "#185FA5",
+                background: "#EBF4FD",
+                fontWeight: 500,
+              }}
+            >
+              Gửi feedback
+            </button>
+        </div>
         {dayModal && (
           <DayModal
             dateStr={dayModal.dateStr}
