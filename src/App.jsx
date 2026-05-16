@@ -258,7 +258,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions, pnlMode }) 
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", marginBottom: 12 }}>Chọn setup / chiến lược <span style={{ fontSize: 11 }}>(có thể chọn nhiều)</span></div>
+          <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", marginBottom: 12 }}>Chọn setup / chiến lược <span style={{ fontSize: 11 }}>(Chỉ nên chọn 1)</span></div>
           {setups.length === 0
             ? <div style={{ textAlign: "center", fontSize: 13, color: "#bbb", padding: "20px 0", background: "#f7f7f5", borderRadius: 10 }}>Chưa có setup nào. Vào tab <strong>Thiết lập</strong> để tạo setup.</div>
             : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
