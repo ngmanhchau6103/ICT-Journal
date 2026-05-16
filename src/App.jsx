@@ -180,62 +180,58 @@ function NewTradeFlow({ initial, onSave, onCancel, allModels, onAddModel, setups
   const selectedSetupIds = form.selectedSetupIds || [];
   const selectedSetups = setups.filter(s => selectedSetupIds.includes(s.id));
 
-  // Step 1: Position
+  // Step 1 & 2 combined: Pick position + setup inline
   if (step === "position") {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 80, paddingBottom: 80, gap: 32 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 20 }}>
+        {/* Buy / Sell */}
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#333", marginBottom: 8 }}>Bạn đang vào lệnh nào?</div>
-          <div style={{ fontSize: 13, color: "#aaa" }}>Chọn hướng giao dịch</div>
+          <div style={{ fontSize: 13, color: "#aaa", marginBottom: 14 }}>Chọn hướng giao dịch</div>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
+            {["Buy", "Sell"].map(p => {
+              const active = form.position === p;
+              const isBuyBtn = p === "Buy";
+              return (
+                <button key={p} onClick={() => set("position", p)} style={{ width: 150, height: 90, cursor: "pointer", borderRadius: 14, border: `2px solid ${active ? (isBuyBtn ? "#97C459" : "#F09595") : "#e5e5e5"}`, background: active ? (isBuyBtn ? "#EAF3DE" : "#FCEBEB") : "#fff", color: active ? (isBuyBtn ? "#3B6D11" : "#A32D2D") : "#bbb", fontSize: 18, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: active ? `0 2px 8px ${isBuyBtn ? "rgba(59,109,17,0.12)" : "rgba(163,45,45,0.12)"}` : "0 1px 3px rgba(0,0,0,0.04)", transition: "all 0.15s" }}>
+                  <span style={{ fontSize: 24 }}>{isBuyBtn ? "▲" : "▼"}</span>
+                  <span>{p}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 20 }}>
-          <button onClick={() => { set("position", "Buy"); setStep("setup"); }} style={{ width: 160, height: 100, cursor: "pointer", borderRadius: 14, border: "1.5px solid #97C459", background: "#EAF3DE", color: "#3B6D11", fontSize: 22, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: "0 2px 8px rgba(59,109,17,0.10)", transition: "transform 0.1s" }}>
-            <span style={{ fontSize: 28 }}>▲</span>
-            <span>Buy</span>
-          </button>
-          <button onClick={() => { set("position", "Sell"); setStep("setup"); }} style={{ width: 160, height: 100, cursor: "pointer", borderRadius: 14, border: "1.5px solid #F09595", background: "#FCEBEB", color: "#A32D2D", fontSize: 22, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: "0 2px 8px rgba(163,45,45,0.10)", transition: "transform 0.1s" }}>
-            <span style={{ fontSize: 28 }}>▼</span>
-            <span>Sell</span>
-          </button>
-        </div>
-        {onCancel && <button onClick={onCancel} style={{ ...btnStyle, color: "#aaa" }}>Huỷ</button>}
-      </div>
-    );
-  }
 
-  // Step 2: Setup
-  if (step === "setup") {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <button onClick={() => setStep("position")} style={{ ...btnStyle, color: "#aaa", padding: "4px 10px", fontSize: 12 }}>← Quay lại</button>
-          <span style={{ padding: "3px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, background: isBuy ? "#EAF3DE" : "#FCEBEB", color: isBuy ? "#3B6D11" : "#A32D2D", border: `1px solid ${isBuy ? "#97C459" : "#F09595"}` }}>{isBuy ? "▲ Buy" : "▼ Sell"}</span>
-        </div>
-        <div style={{ textAlign: "center", paddingBottom: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#333", marginBottom: 4 }}>Chọn setup / chiến lược</div>
-          <div style={{ fontSize: 13, color: "#aaa" }}>Có thể chọn nhiều setup cùng lúc</div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {setups.map(setup => {
-            const selected = selectedSetupIds.includes(setup.id);
-            return (
-              <button key={setup.id} onClick={() => { const curr = form.selectedSetupIds || []; const next = curr.includes(setup.id) ? curr.filter(id => id !== setup.id) : [...curr, setup.id]; set("selectedSetupIds", next); }} style={{ textAlign: "left", padding: "14px 16px", borderRadius: 12, cursor: "pointer", border: `1.5px solid ${selected ? "#185FA5" : "#e5e5e5"}`, background: selected ? "#EBF4FD" : "#fff", boxShadow: selected ? "0 0 0 3px rgba(24,95,165,0.08)" : "0 1px 3px rgba(0,0,0,0.04)", transition: "all 0.15s" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: selected ? "#185FA5" : "#222" }}>{selected ? "✓ " : ""}{setup.name}</span>
-                  <span style={{ fontSize: 11, color: "#aaa" }}>{setup.steps.length} bước</span>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {setup.steps.slice(0, 4).map((step, i) => (<span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "#f1f1ee", color: "#666", border: "0.5px solid #ddd" }}>{i + 1}. {step}</span>))}
-                  {setup.steps.length > 4 && <span style={{ fontSize: 11, color: "#bbb" }}>+{setup.steps.length - 4} nữa</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
-          <button onClick={() => setStep("form")} style={{ ...btnStyle, color: "#aaa" }}>Bỏ qua setup</button>
-          <button onClick={() => setStep("form")} style={primaryBtn}>Tiếp tục →</button>
-        </div>
+        {/* Setup list — hiện ngay bên dưới sau khi chọn Buy/Sell */}
+        {form.position && setups.length > 0 && (
+          <div>
+            <div style={{ fontSize: 13, color: "#aaa", textAlign: "center", marginBottom: 12 }}>Chọn setup / chiến lược <span style={{ fontSize: 12 }}>(có thể chọn nhiều)</span></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {setups.map(setup => {
+                const selected = selectedSetupIds.includes(setup.id);
+                return (
+                  <button key={setup.id} onClick={() => { const curr = form.selectedSetupIds || []; const next = curr.includes(setup.id) ? curr.filter(id => id !== setup.id) : [...curr, setup.id]; set("selectedSetupIds", next); }} style={{ textAlign: "left", padding: "12px 14px", borderRadius: 12, cursor: "pointer", border: `1.5px solid ${selected ? "#185FA5" : "#e5e5e5"}`, background: selected ? "#EBF4FD" : "#fff", boxShadow: selected ? "0 0 0 3px rgba(24,95,165,0.08)" : "0 1px 3px rgba(0,0,0,0.04)", transition: "all 0.15s" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: selected ? "#185FA5" : "#222" }}>{selected ? "✓ " : ""}{setup.name}</span>
+                      <span style={{ fontSize: 11, color: "#aaa" }}>{setup.steps.length} bước</span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {setup.steps.slice(0, 4).map((s, i) => (<span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "#f1f1ee", color: "#666", border: "0.5px solid #ddd" }}>{i + 1}. {s}</span>))}
+                      {setup.steps.length > 4 && <span style={{ fontSize: 11, color: "#bbb" }}>+{setup.steps.length - 4} nữa</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        {form.position && (
+          <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+            {onCancel && <button onClick={onCancel} style={{ ...btnStyle, color: "#aaa" }}>Huỷ</button>}
+            <button onClick={() => setStep("form")} style={primaryBtn}>Tiếp tục →</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -505,60 +501,12 @@ function SetupEditor({ setup, onSave, onCancel, onDelete }) {
   );
 }
 
-function ThietLapTab({ setups, onSetupsSave }) {
-  const [editing, setEditing] = useState(null);
-  const [editingSetup, setEditingSetup] = useState(null);
-  const handleSave = (saved) => {
-    const exists = setups.find(s => s.id === saved.id);
-    if (exists) {
-      onSetupsSave(setups.map(s => s.id === saved.id ? saved : s));
-    } else {
-      onSetupsSave([...setups, saved]);
-    }
-    setEditing(null);
-    setEditingSetup(null);
-  };
-  const handleDelete = (id) => {
-    if (!window.confirm("Xoá setup này?")) return;
-    onSetupsSave(setups.filter(s => s.id !== id));
-    setEditing(null);
-    setEditingSetup(null);
-  };
-  const startEdit = (setup) => {
-    setEditingSetup(setup);
-    setEditing(setup.id);
-  };
-  const startNew = () => {
-    setEditingSetup(null);
-    setEditing("new");
-  };
+function ThietLapTab() {
   return (
-    <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 14, color: "#555", lineHeight: 1.7, marginBottom: 16, background: "#f7f7f5", borderRadius: 10, padding: "12px 16px" }}>
-          <strong>Phương pháp giao dịch</strong> của bạn được định nghĩa ở đây. Mỗi setup là một checklist các bước bạn cần tuân theo trước khi vào lệnh — giúp bạn giao dịch có kỷ luật và nhất quán.
-        </div>
-      </div>
-      {setups.length === 0 && !editing && (<div style={{ textAlign: "center", color: "#bbb", padding: "40px 0", fontSize: 14 }}>Chưa có setup nào. Tạo setup đầu tiên của bạn!</div>)}
-      {setups.map(setup => (
-        editing === setup.id ? (
-          <SetupEditor key={setup.id} setup={editingSetup} onSave={handleSave} onCancel={() => { setEditing(null); setEditingSetup(null); }} onDelete={() => handleDelete(setup.id)} />
-        ) : (
-          <div key={setup.id} style={{ background: "#fff", border: "0.5px solid #e5e5e5", borderRadius: 12, overflow: "hidden", marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15, color: "#111", marginBottom: 4 }}>{setup.name}</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {setup.steps.map((step, i) => (<span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#f1f1ee", color: "#666", border: "0.5px solid #ddd" }}>{i + 1}. {step}</span>))}
-                </div>
-              </div>
-              <button onClick={() => startEdit(setup)} style={{ ...btnStyle, marginLeft: 12, flexShrink: 0 }}>Sửa</button>
-            </div>
-          </div>
-        )
-      ))}
-      {editing === "new" && (<SetupEditor setup={null} onSave={handleSave} onCancel={() => setEditing(null)} />)}
-      {editing !== "new" && (<button onClick={startNew} style={{ ...primaryBtn, marginTop: 8 }}>+ Tạo setup mới</button>)}
+    <div style={{ textAlign: "center", padding: "60px 0", color: "#bbb", fontSize: 14 }}>
+      <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
+      <div style={{ fontWeight: 500, color: "#999", marginBottom: 6 }}>Thiết lập chung</div>
+      <div>Tính năng này sẽ sớm được cập nhật.</div>
     </div>
   );
 }
@@ -600,7 +548,7 @@ export default function App() {
         {tab === "new" && <NewTradeFlow initial={editTrade} onSave={saveTrade} onCancel={editTrade ? () => { setEditTrade(null); setTab("history"); } : null} allModels={allModels} onAddModel={addModel} setups={setups} />}
         {tab === "history" && (<div>{trades.length === 0 && <div style={{ textAlign: "center", color: "#bbb", padding: "60px 0", fontSize: 14 }}>Chưa có lệnh nào. Hãy thêm lệnh đầu tiên!</div>}{trades.map(t => <TradeCard key={t.id} trade={t} onDelete={deleteTrade} onEdit={startEdit} setups={setups} />)}</div>)}
         {tab === "stats" && <Stats trades={trades} />}
-        {tab === "thietlap" && <ThietLapTab setups={setups} onSetupsSave={setSetups} />}
+        {tab === "thietlap" && <ThietLapTab />}
       </div>
     </div>
   );
