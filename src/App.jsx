@@ -105,7 +105,7 @@ const primaryBtn = { ...btnStyle, background: "#1a1a1a", color: "#fff", border: 
 const inp = { fontSize: 14, width: "100%", boxSizing: "border-box", padding: "7px 10px", border: "0.5px solid #ccc", borderRadius: 7, outline: "none", fontFamily: "inherit" };
 const chipStyle = (active, c) => ({ fontSize: 12, padding: "4px 12px", cursor: "pointer", borderRadius: 20, background: active ? c.bg : "transparent", color: active ? c.text : "#777", border: `1px solid ${active ? c.border : "#ddd"}`, fontWeight: active ? 500 : 400, fontFamily: "inherit" });
 const lbl = { fontSize: 12, color: "#777", marginBottom: 5, fontWeight: 500 };
-const secTitle = (txt) => <div style={{ fontSize: 12, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 12, marginTop: 10, letterSpacing: 0.4 }}>{txt.toUpperCase()}</div>;
+const SecTitle = ({ txt }) => <div style={{ fontSize: 12, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #e5e5e5", paddingBottom: 5, marginBottom: 12, marginTop: 10, letterSpacing: 0.4 }}>{txt.toUpperCase()}</div>;
 
 // ─── Image Upload ─────────────────────────────────────────────────────────────
 function ImageUpload({ images, onChange }) {
@@ -230,8 +230,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
       )}
 
       {/* Date + Ticker */}
-      {secTitle("Thông tin lệnh")}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <SecTitle txt="Thông tin lệnh" />      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div><div style={lbl}>Ngày</div><input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={inp} /></div>
         <div><div style={lbl}>Ticker</div><input type="text" placeholder="NQ, ES, EURUSD..." value={form.ticker} onChange={e => set("ticker", e.target.value.toUpperCase())} style={inp} /></div>
       </div>
@@ -247,7 +246,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
       {/* Dynamic setup steps — grouped as "Lý do vào lệnh" */}
       {selectedSetups.length > 0 && (
         <>
-          {secTitle("Lý do vào lệnh")}
+          <SecTitle txt="Lý do vào lệnh" />
           {selectedSetups.map(setup => (
             <div key={setup.id}>
               {selectedSetups.length > 1 && <div style={{ fontSize: 12, fontWeight: 600, color: "#185FA5", marginBottom: 8 }}>{setup.name}</div>}
@@ -274,7 +273,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
       )}
 
       {/* Entry TF + Session */}
-      {secTitle("Thời gian vào lệnh")}
+      <SecTitle txt="Thời gian vào lệnh" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <div style={lbl}>Entry timeframe</div>
@@ -292,7 +291,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
       </div>
 
       {/* Sau lệnh */}
-      {secTitle("Sau lệnh")}
+      <SecTitle txt="Sau lệnh" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <div style={lbl}>Kết quả</div>
