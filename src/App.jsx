@@ -10,6 +10,7 @@ const SETUPS_KEY   = "my_journal_setups";
 const SESSIONS_KEY = "my_journal_sessions";
 const PNL_MODE_KEY = "my_journal_pnl_mode";
 const LANGUAGE_KEY = "my_journal_language";
+const JOURNAL_TABLE = "journal_data";
 const DEFAULT_LANGUAGE = "vi";
 
 const LANGUAGES = [
@@ -3181,6 +3182,7 @@ function AuthScreen() {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [cloudLoaded, setCloudLoaded] = useState(false);
   const [tab, setTab] = useState("new");
   const [trades, setTrades] = useState(() => load(STORAGE_KEY, []));
   const [setups, setSetups] = useState(() => load(SETUPS_KEY, []));
@@ -3195,6 +3197,15 @@ export default function App() {
   const [dayModal, setDayModal] = useState(null);
 
   const t = useCallback(key => tOf(language, key), [language]);
+  const buildJournalPayload = useCallback(() => {
+    return {
+      trades,
+      setups,
+      sessions,
+      pnlMode,
+      language,
+    };
+  }, [trades, setups, sessions, pnlMode, language]);
 
   useEffect(() => {
     let mounted = true;
@@ -3226,6 +3237,80 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setCloudLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCloudJournal = async () => {
+      setCloudLoaded(false);
+
+      const localPayload = {
+        trades: load(STORAGE_KEY, []),
+        setups: load(SETUPS_KEY, []),
+        sessions: load(SESSIONS_KEY, DEFAULT_SESSIONS),
+        pnlMode: load(PNL_MODE_KEY, "R"),
+        language: load(LANGUAGE_KEY, DEFAULT_LANGUAGE),
+      };
+
+      const { data, error } = await supabase
+        .from(JOURNAL_TABLE)
+        .select("data")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Load journal failed:", error);
+        alert("Không thể tải dữ liệu journal từ Supabase: " + error.message);
+        setCloudLoaded(true);
+        return;
+      }
+
+      if (data?.data) {
+        const cloud = data.data;
+
+        setTrades(Array.isArray(cloud.trades) ? cloud.trades : []);
+        setSetups(Array.isArray(cloud.setups) ? cloud.setups : []);
+        setSessions(
+          Array.isArray(cloud.sessions) && cloud.sessions.length
+            ? cloud.sessions
+            : DEFAULT_SESSIONS
+        );
+        setPnlMode(cloud.pnlMode || "R");
+        setLanguage(cloud.language || DEFAULT_LANGUAGE);
+      } else {
+        const { error: upsertError } = await supabase
+          .from(JOURNAL_TABLE)
+          .upsert(
+            {
+              user_id: user.id,
+              data: localPayload,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" }
+          );
+
+        if (upsertError) {
+          console.error("Initial journal sync failed:", upsertError);
+          alert("Không thể đồng bộ dữ liệu local lên Supabase: " + upsertError.message);
+        }
+      }
+
+      setCloudLoaded(true);
+    };
+
+    loadCloudJournal();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
     persist(STORAGE_KEY, trades);
   }, [trades]);
 
@@ -3244,6 +3329,31 @@ export default function App() {
   useEffect(() => {
     persist(LANGUAGE_KEY, language);
   }, [language]);
+
+  useEffect(() => {
+    if (!user || !cloudLoaded) return;
+
+    const timeout = setTimeout(async () => {
+      const payload = buildJournalPayload();
+
+      const { error } = await supabase
+        .from(JOURNAL_TABLE)
+        .upsert(
+          {
+            user_id: user.id,
+            data: payload,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (error) {
+        console.error("Save journal failed:", error);
+      }
+    }, 600);
+
+    return () => clearTimeout(timeout);
+  }, [user, cloudLoaded, buildJournalPayload]);
 
   const saveTrade = form => {
     if (!validatePnl(form.result, form.pnl, t)) return;
@@ -3284,6 +3394,7 @@ export default function App() {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setCloudLoaded(false);
   };
 
   const tabStyle = tName => ({
@@ -3298,7 +3409,7 @@ export default function App() {
     fontFamily: "inherit",
   });
 
-  if (authLoading) {
+  if (authLoading || (user && !cloudLoaded)) {
     return (
       <div
         style={{
