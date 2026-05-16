@@ -316,7 +316,7 @@ function NewTradeFlow({ initial, onSave, onCancel, setups, sessions }) {
                             <input type="checkbox" checked={!!val} onChange={() => setStepData(setup.id, idx, !val)} style={{ width: 16, height: 16, accentColor: "#3B6D11", flexShrink: 0 }} />
                             <span style={{ fontSize: 13, color: val ? "#3B6D11" : "#aaa" }}>{val ? "Đã xác nhận" : "Chưa xác nhận"}</span>
                           </label>
-                        : <textarea rows={2} placeholder={step.placeholder || `Nhập ${step.label.toLowerCase()}...`} value={val || ""} onChange={e => setStepData(setup.id, idx, e.target.value)} style={{ ...inp, resize: "vertical" }} />}
+                        : <textarea rows={2} placeholder={step.placeholder || `Nhập ${(step.label || "nội dung").toLowerCase()}...`} value={val || ""} onChange={e => setStepData(setup.id, idx, e.target.value)} style={{ ...inp, resize: "vertical" }} />}
                     </div>
                   );
                 })}
